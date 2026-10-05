@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – Manage Groomers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .btn-icon-sm { background:none; border:none; cursor:pointer; font-size:1rem; padding:.2rem; }
+    .form-in { width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); padding:.6rem; color:var(--text-primary); margin-bottom:.5rem; font-family:'Inter',sans-serif; }
+    .groomer-form { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); padding:1.5rem; margin-bottom:2rem; }
+    .groomer-form .grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="paw-logo">🐾</div><span class="brand-name">PawCare</span></div>
+  <div class="nav-links"></div>
+</nav>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="admin-title">💇 Manage Groomers</h1>
+      <p class="admin-sub">Add and manage groomers available for appointments</p>
+    </div>
+    <a href="grooming_admin.html" class="btn-primary admin-new-btn" style="background:var(--bg-surface);color:var(--green-400);border:1px solid var(--green-400);">
+      ← Grooming Records
+    </a>
+  </div>
+
+  <div class="groomer-form">
+    <h2 style="font-size:1.1rem;margin-bottom:1rem;">Add New Groomer</h2>
+    <form id="add-groomer-form" class="grid">
+      <div>
+        <label style="font-size:.8rem;color:var(--text-secondary);font-weight:600;">First Name</label>
+        <input type="text" class="form-in" id="g-first" required />
+      </div>
+      <div>
+        <label style="font-size:.8rem;color:var(--text-secondary);font-weight:600;">Last Name</label>
+        <input type="text" class="form-in" id="g-last" required />
+      </div>
+      <div>
+        <label style="font-size:.8rem;color:var(--text-secondary);font-weight:600;">Email</label>
+        <input type="email" class="form-in" id="g-email" required />
+      </div>
+      <div>
+        <label style="font-size:.8rem;color:var(--text-secondary);font-weight:600;">Contact Number</label>
+        <input type="text" class="form-in" id="g-contact" required />
+      </div>
+      <div style="grid-column:span 2;">
+        <label style="font-size:.8rem;color:var(--text-secondary);font-weight:600;">Specialty (e.g. Long Coat, Small Breeds)</label>
+        <input type="text" class="form-in" id="g-specialty" placeholder="e.g. Small breeds, De-shedding" />
+      </div>
+      <div style="grid-column:span 2;text-align:right;">
+        <button type="submit" class="btn-primary">Add Groomer</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="bookings-table">
+      <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Contact</th><th>Specialty</th><th>Actions</th></tr></thead>
+      <tbody id="groomers-tbody"></tbody>
+    </table>
+    <div class="table-empty hidden" id="groomers-empty"><div class="empty-icon">💇</div><p>No groomers found.</p></div>
+  </div>
+</div>
+
+<footer class="footer"><div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your pets, always.</span></div></footer>
+
+<script>
+async function loadGroomers() {
+  const res = await fetch('/api/grooming/groomers');
+  const groomers = res.ok ? await res.json() : [];
+  const tbody = document.getElementById('groomers-tbody');
+  const empty = document.getElementById('groomers-empty');
+  if (!groomers.length) { tbody.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  tbody.innerHTML = groomers.map(g => `
+    <tr>
+      <td>#${g.groomerId}</td>
+      <td style="font-weight:600;">${g.firstName} ${g.lastName}</td>
+      <td>${g.email}</td>
+      <td>${g.contactNo}</td>
+      <td>${g.specialty || '—'}</td>
+      <td>
+        <button class="btn-icon-sm" title="Delete" onclick="deleteGroomer(${g.groomerId})">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+document.getElementById('add-groomer-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    firstName: document.getElementById('g-first').value,
+    lastName:  document.getElementById('g-last').value,
+    email:     document.getElementById('g-email').value,
+    contactNo: document.getElementById('g-contact').value,
+    specialty: document.getElementById('g-specialty').value
+  };
+  const res = await fetch('/api/grooming/groomers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (res.ok) { document.getElementById('add-groomer-form').reset(); loadGroomers(); }
+  else {
+    const err = await res.json();
+    alert('Error: ' + (err.error || 'Failed to add groomer'));
+  }
+});
+
+async function deleteGroomer(id) {
+  if (!confirm('Delete this groomer?')) return;
+  await fetch(`/api/grooming/groomers/${id}`, { method: 'DELETE' });
+  loadGroomers();
+}
+
+loadGroomers();
+</script>
+<script src="nav-manager.js"></script>
+</body>
+</html>

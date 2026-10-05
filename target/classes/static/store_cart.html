@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – My Cart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .cart-page { max-width: 820px; margin: 3rem auto; padding: 2rem; }
+    .cart-page h1 { font-size:1.6rem; font-weight:800; color:var(--text-primary); margin-bottom:1.8rem; }
+    .cart-table { width:100%; border-collapse:collapse; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; }
+    .cart-table th { background:var(--bg-surface); color:var(--text-secondary); font-size:.8rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; padding:.8rem 1rem; text-align:left; border-bottom:1px solid var(--border); }
+    .cart-table td { padding:.9rem 1rem; border-bottom:1px solid var(--border); color:var(--text-primary); font-size:.9rem; vertical-align:middle; }
+    .cart-table tr:last-child td { border-bottom:none; }
+    .qty-ctrl { display:flex; align-items:center; gap:.5rem; }
+    .qty-btn { width:28px; height:28px; border:1px solid var(--border); background:var(--bg-surface); color:var(--text-primary); border-radius:6px; cursor:pointer; font-size:1rem; font-weight:700; display:flex; align-items:center; justify-content:center; }
+    .qty-btn:hover { background:var(--border); }
+    .qty-val { width:36px; text-align:center; font-weight:600; }
+    .btn-remove { background:rgba(239,68,68,.1); color:#f87171; border:1px solid rgba(239,68,68,.2); padding:.3rem .7rem; border-radius:6px; font-size:.78rem; font-weight:600; cursor:pointer; }
+    .cart-summary { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1.5rem; margin-top:1.5rem; }
+    .summary-row { display:flex; justify-content:space-between; color:var(--text-secondary); font-size:.9rem; margin-bottom:.6rem; }
+    .summary-total { display:flex; justify-content:space-between; color:var(--text-primary); font-size:1.2rem; font-weight:700; margin-top:.8rem; padding-top:.8rem; border-top:1px solid var(--border); }
+    .btn-checkout { width:100%; margin-top:1.2rem; padding:1rem; background:linear-gradient(135deg,#16a34a,#22c55e); color:#fff; border:none; border-radius:var(--radius-md); font-weight:700; font-size:1rem; cursor:pointer; font-family:'Inter',sans-serif; transition:all .3s; }
+    .btn-checkout:hover { opacity:.9; transform:translateY(-2px); }
+    .btn-checkout:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+    .empty-cart { text-align:center; padding:5rem 2rem; color:var(--text-muted); }
+    .empty-cart .emoji { font-size:4rem; margin-bottom:1rem; }
+    .alert-msg { padding:1rem; margin-bottom:1rem; border-radius:var(--radius-sm); display:none; }
+    .alert-msg.success { display:block; background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.3); color:#86efac; }
+    .alert-msg.error { display:block; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.3); color:#fca5a5; }
+    .continue-btn { display:inline-block; margin-top:1.5rem; color:#4ade80; text-decoration:none; font-size:.9rem; font-weight:600; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="paw-logo">🐾</div><span class="brand-name">PawCare</span></div>
+  <div class="nav-links"></div>
+</nav>
+
+<div class="cart-page">
+  <h1>🛒 My Cart</h1>
+  <div id="status-msg" class="alert-msg"></div>
+  <div id="cart-content"></div>
+  <a href="store_main.html" class="continue-btn">← Continue Shopping</a>
+</div>
+
+<footer class="footer">
+  <div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your pets, always.</span></div>
+</footer>
+
+<script>
+/* ── Cart helpers (standalone, no dependency on store.js) ── */
+const PAWCARE_USER = JSON.parse(localStorage.getItem('pawcare_user') || '{}');
+const PAWCARE_CART_KEY = 'pawcare_cart';
+
+function cartGet()    { try { return JSON.parse(localStorage.getItem(PAWCARE_CART_KEY) || '[]'); } catch { return []; } }
+function cartSave(c)  { localStorage.setItem(PAWCARE_CART_KEY, JSON.stringify(c)); renderCartPage(); updateBadge(); }
+function updateBadge(){ const n = cartGet().reduce((s,i)=>s+i.qty,0); document.querySelectorAll('.cart-badge').forEach(b=>{ b.textContent=n; b.style.display=n>0?'inline-flex':'none'; }); }
+
+function renderCartPage() {
+  const cart = cartGet();
+  const content = document.getElementById('cart-content');
+  if (cart.length === 0) {
+    content.innerHTML = `<div class="empty-cart"><div class="emoji">🛒</div><p>Your cart is empty.</p><a href="store_main.html" class="btn-primary" style="display:inline-block;margin-top:1rem;">Browse Products</a></div>`;
+    return;
+  }
+
+  const rows = cart.map((item, idx) => `
+    <tr>
+      <td><strong>${item.name}</strong></td>
+      <td>LKR ${Number(item.price).toLocaleString()}</td>
+      <td>
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="cartChangeQty(${idx}, -1)">−</button>
+          <span class="qty-val">${item.qty}</span>
+          <button class="qty-btn" onclick="cartChangeQty(${idx}, 1)">+</button>
+        </div>
+      </td>
+      <td><strong>LKR ${(Number(item.price) * item.qty).toLocaleString()}</strong></td>
+      <td><button class="btn-remove" onclick="cartRemove(${idx})">Remove</button></td>
+    </tr>`).join('');
+
+  const total = cart.reduce((s, i) => s + Number(i.price) * i.qty, 0);
+  content.innerHTML = `
+    <table class="cart-table">
+      <thead><tr><th>Product</th><th>Unit Price</th><th>Quantity</th><th>Subtotal</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="cart-summary">
+      <div class="summary-row"><span>${cart.reduce((s,i)=>s+i.qty,0)} item(s)</span></div>
+      <div class="summary-total"><span>Total</span><span>LKR ${total.toLocaleString()}</span></div>
+      <button class="btn-checkout" id="checkout-btn" onclick="confirmOrder()">✅ Confirm Order</button>
+      <p style="font-size:.78rem;color:#6b7280;text-align:center;margin-top:.8rem;">No online payment — payment is made in-store upon pickup.</p>
+    </div>`;
+}
+
+function cartChangeQty(idx, delta) {
+  const cart = cartGet();
+  cart[idx].qty = Math.max(1, Math.min(cart[idx].qty + delta, cart[idx].stockQty || 99));
+  cartSave(cart);
+}
+
+function cartRemove(idx) {
+  const cart = cartGet();
+  cart.splice(idx, 1);
+  cartSave(cart);
+}
+
+async function confirmOrder() {
+  const cart = cartGet();
+  if (cart.length === 0) return;
+  const btn = document.getElementById('checkout-btn');
+  btn.disabled = true; btn.textContent = 'Placing order…';
+
+  const payload = {
+    ownerId: PAWCARE_USER.ownerId,
+    items: cart.map(i => ({ productId: i.id, quantity: i.qty }))
+  };
+
+  try {
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.removeItem(PAWCARE_CART_KEY);
+      updateBadge();
+      const msg = document.getElementById('status-msg');
+      msg.className = 'alert-msg success';
+      msg.textContent = `✅ Order #${data.orderId} confirmed! Total: LKR ${Number(data.totalPrice).toLocaleString()}`;
+      document.getElementById('cart-content').innerHTML = `
+        <div class="empty-cart">
+          <div class="emoji">🎉</div>
+          <p>Order placed successfully!</p>
+          <a href="customer_profile.html" class="btn-primary" style="display:inline-block;margin-top:1rem;">View My Orders</a>
+        </div>`;
+    } else {
+      document.getElementById('status-msg').className = 'alert-msg error';
+      document.getElementById('status-msg').textContent = '❌ ' + (data.error || 'Order failed');
+      btn.disabled = false; btn.textContent = '✅ Confirm Order';
+    }
+  } catch (err) {
+    document.getElementById('status-msg').className = 'alert-msg error';
+    document.getElementById('status-msg').textContent = '❌ Network error. Please try again.';
+    btn.disabled = false; btn.textContent = '✅ Confirm Order';
+  }
+}
+
+renderCartPage();
+updateBadge();
+</script>
+<script src="nav-manager.js"></script>
+</body>
+</html>

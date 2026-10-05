@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – Vet Coordinator Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .btn-icon-sm { background:none; border:none; cursor:pointer; font-size:1rem; padding:.2rem; }
+    .status-badge { font-size:.72rem; font-weight:700; padding:.2rem .6rem; border-radius:99px; text-transform:capitalize; }
+    .status-badge.pending   { color:#eab308; background:rgba(234,179,8,.1); }
+    .status-badge.confirmed { color:var(--green-400); background:rgba(34,197,94,.1); }
+    .status-badge.cancelled { color:#f87171; background:rgba(239,68,68,.1); }
+    .assign-panel { background:var(--bg-surface); border:1px solid var(--border-active); border-radius:8px; padding:1rem; margin-top:.6rem; display:none; }
+    .assign-panel.open { display:block; }
+    .vet-option { display:flex; align-items:center; gap:.6rem; padding:.5rem .7rem; border-radius:6px; border:1px solid var(--border); margin-bottom:.4rem; cursor:pointer; transition:all .2s; }
+    .vet-option:hover { border-color:var(--green-500); }
+    .vet-option.busy  { opacity:.45; cursor:not-allowed; pointer-events:none; }
+    .vet-available-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .vet-available-dot.ok   { background:var(--green-400); }
+    .vet-available-dot.busy { background:#f87171; }
+    
+    /* Modal styles */
+    .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:100; justify-content:center; align-items:center; }
+    .modal-overlay.open { display:flex; }
+    .modal-content { background:var(--bg-surface); padding:1.5rem; border-radius:var(--radius-md); width:90%; max-width:600px; border:1px solid var(--border); max-height:90vh; overflow-y:auto; }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+    .modal-close { background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-secondary); }
+    .form-group { margin-bottom:1rem; }
+    .form-lbl { display:block; font-size:.8rem; font-weight:600; color:var(--text-secondary); margin-bottom:.3rem; }
+    .form-in { width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); padding:.6rem; color:var(--text-primary); font-family:inherit; }
+    .btn-primary { background:linear-gradient(135deg,var(--green-600),var(--green-500)); color:#fff; border:none; border-radius:var(--radius-sm); padding:.6rem 1.2rem; font-weight:600; cursor:pointer; }
+    .vaccination-row { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:.5rem; margin-bottom:.5rem; align-items:center; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="paw-logo">🐾</div><span class="brand-name">PawCare</span></div>
+  <div class="nav-links"></div>
+</nav>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="admin-title">🩺 Vet Coordinator Dashboard</h1>
+      <p class="admin-sub">Manage appointments, assign vets, and maintain medical records</p>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-icon">📋</div><div class="kpi-info"><div class="kpi-value" id="kpi-total">0</div><div class="kpi-label">Total Appointments</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon">⏳</div><div class="kpi-info"><div class="kpi-value" id="kpi-pending">0</div><div class="kpi-label">Pending</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon">✅</div><div class="kpi-info"><div class="kpi-value" id="kpi-confirmed">0</div><div class="kpi-label">Confirmed</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon">📝</div><div class="kpi-info"><div class="kpi-value" id="kpi-records">0</div><div class="kpi-label">Medical Records</div></div></div>
+  </div>
+
+  <!-- Appointments Table -->
+  <div class="admin-toolbar">
+    <div class="search-box">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="vet-search" placeholder="Search pet, owner, reason…" class="search-input" />
+    </div>
+    <div class="filter-row">
+      <select class="filter-select" id="vet-filter-status">
+        <option value="">All Status</option>
+        <option value="pending">Pending</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+      <button class="btn-ghost clear-btn" id="vet-clear">Clear</button>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="bookings-table">
+      <thead><tr><th>ID</th><th>Pet</th><th>Owner</th><th>Date & Time</th><th>Reason</th><th>Status</th><th>Assigned Vet</th><th>Actions</th></tr></thead>
+      <tbody id="vet-appt-tbody"></tbody>
+    </table>
+    <div class="table-empty hidden" id="vet-appt-empty"><div class="empty-icon">🩺</div><p>No appointments found.</p></div>
+  </div>
+
+  <!-- Medical Records Table -->
+  <div style="margin-top:3rem;">
+    <h2 style="font-size:1.1rem;font-weight:700;color:var(--text-primary);margin-bottom:1rem;">📋 Medical Records</h2>
+    <div class="table-wrapper">
+      <table class="bookings-table">
+        <thead><tr><th>Record ID</th><th>Pet</th><th>Appointment</th><th>Diagnosis</th><th>Treatment</th><th>Medication</th><th>Actions</th></tr></thead>
+        <tbody id="med-records-tbody"></tbody>
+      </table>
+      <div class="table-empty hidden" id="med-records-empty"><div class="empty-icon">📋</div><p>No medical records yet.</p></div>
+    </div>
+  </div>
+</div>
+
+<footer class="footer"><div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your pets, always.</span></div></footer>
+
+<!-- Medical Record Modal -->
+<div class="modal-overlay" id="record-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 style="font-size:1.2rem;font-weight:700;">📝 Log Medical Record</h2>
+      <button class="modal-close" onclick="closeRecordModal()">×</button>
+    </div>
+    <form id="record-form">
+      <input type="hidden" id="r-appt-id" />
+      <div class="form-group">
+        <label class="form-lbl">Diagnosis</label>
+        <input type="text" class="form-in" id="r-diagnosis" required />
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Treatment Provided</label>
+        <textarea class="form-in" id="r-treatment" rows="2" required></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Follow-up Recommendations</label>
+        <textarea class="form-in" id="r-followup" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Prescribed Medication</label>
+        <input type="text" class="form-in" id="r-meds" />
+      </div>
+      
+      <div class="form-group" style="margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1rem;">
+        <label class="form-lbl" style="font-size:1rem;display:flex;justify-content:space-between;align-items:center;">
+          Vaccinations Administered
+          <button type="button" class="btn-icon-sm" onclick="addVaccinationRow()" style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;padding:.2rem .5rem;">+ Add</button>
+        </label>
+        <div id="vaccination-container"></div>
+      </div>
+      
+      <div style="text-align:right;margin-top:1.5rem;">
+        <button type="submit" class="btn-primary">Save Record</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let allAppts = [], filtAppts = [], allRecords = [];
+const sf = { search:'', status:'' };
+
+function sbadge(s) { return `<span class="status-badge ${s||'pending'}">${s||'pending'}</span>`; }
+function fmtDT(s) { return s ? new Date(s).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}) : '—'; }
+
+async function loadAppointments() {
+  try {
+    const r = await fetch('/api/vet/appointments');
+    allAppts = await r.json();
+    document.getElementById('kpi-total').textContent     = allAppts.length;
+    document.getElementById('kpi-pending').textContent   = allAppts.filter(a=>a.status==='pending').length;
+    document.getElementById('kpi-confirmed').textContent = allAppts.filter(a=>a.status==='confirmed').length;
+    renderApptTable();
+  } catch(e) { console.error(e); }
+}
+
+async function loadRecords() {
+  try {
+    const r = await fetch('/api/vet/records');
+    allRecords = await r.json();
+    document.getElementById('kpi-records').textContent = allRecords.length;
+    renderRecordsTable();
+  } catch(e) { console.error(e); }
+}
+
+function renderApptTable() {
+  filtAppts = allAppts.filter(a => {
+    const q = sf.search.toLowerCase();
+    const matchSearch = !q || (a.petName||'').toLowerCase().includes(q) || (a.ownerName||'').toLowerCase().includes(q) || (a.reason||'').toLowerCase().includes(q);
+    const matchStatus = !sf.status || a.status === sf.status;
+    return matchSearch && matchStatus;
+  });
+
+  const tbody = document.getElementById('vet-appt-tbody');
+  const empty = document.getElementById('vet-appt-empty');
+  if (filtAppts.length === 0) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = filtAppts.map(a => `
+    <tr id="appt-row-${a.appointmentId}">
+      <td>#${a.appointmentId}</td>
+      <td>${a.petName||'—'}</td>
+      <td>${a.ownerName||'—'}</td>
+      <td>${fmtDT(a.appointmentDateTime)}</td>
+      <td>${a.reason||'—'}</td>
+      <td>${sbadge(a.status)}</td>
+      <td>${a.vetName && a.vetName !== 'Unassigned' ? `<span style="color:var(--green-400);">✔ Dr. ${a.vetName}</span>` : '<span style="color:var(--text-muted);">Unassigned</span>'}</td>
+      <td>
+        <button class="btn-icon-sm" title="${a.status === 'pending' ? 'Assign Vet & Confirm' : 'Re-assign Vet'}" onclick="openAssign(${a.appointmentId}, '${a.appointmentDateTime}')" style="color:var(--green-400);">🔄</button>
+        ${a.status === 'confirmed' ? `<button class="btn-icon-sm" title="Add Medical Record" onclick="openRecordModal(${a.appointmentId})" style="margin-left:.3rem;">📝</button>` : ''}
+        ${a.status !== 'cancelled' ? `<button class="btn-icon-sm" title="Cancel" onclick="cancelAppt(${a.appointmentId})" style="margin-left:.3rem;">❌</button>` : ''}
+        <button class="btn-icon-sm" title="Delete" onclick="deleteAppt(${a.appointmentId})" style="margin-left:.3rem;">🗑️</button>
+        <div class="assign-panel" id="assign-${a.appointmentId}">
+          <p style="font-size:.8rem;font-weight:600;color:var(--text-secondary);margin:0 0 .6rem;">Select an available vet:</p>
+          <div id="vet-list-${a.appointmentId}">Loading vets…</div>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function renderRecordsTable() {
+  const tbody = document.getElementById('med-records-tbody');
+  const empty = document.getElementById('med-records-empty');
+  if (!allRecords.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  tbody.innerHTML = allRecords.map(r => `
+    <tr>
+      <td>#${r.medicalRecordId}</td>
+      <td>${r.petName||'—'}</td>
+      <td>#${r.appointmentId}</td>
+      <td>${r.diagnosis||'—'}</td>
+      <td>${r.treatmentProvided||'—'}</td>
+      <td>
+        ${r.prescribedMedication||'—'}
+        ${r.vaccinations && r.vaccinations.length ? `<div style="margin-top:.4rem;font-size:.75rem;color:var(--text-secondary);">💉 Vax: ${r.vaccinations.map(v => v.typeV).join(', ')}</div>` : ''}
+      </td>
+      <td><button class="btn-icon-sm" onclick="deleteRecord(${r.medicalRecordId})">🗑️</button></td>
+    </tr>`).join('');
+}
+
+// Modal Logic
+function openRecordModal(apptId) {
+  document.getElementById('r-appt-id').value = apptId;
+  document.getElementById('record-form').reset();
+  document.getElementById('vaccination-container').innerHTML = '';
+  document.getElementById('record-modal').classList.add('open');
+}
+
+function closeRecordModal() {
+  document.getElementById('record-modal').classList.remove('open');
+}
+
+function addVaccinationRow() {
+  const div = document.createElement('div');
+  div.className = 'vaccination-row';
+  div.innerHTML = `
+    <input type="text" class="form-in vax-type" placeholder="Vaccine Type (e.g. Rabies)" required />
+    <input type="date" class="form-in vax-date" title="Date Administered" required />
+    <input type="date" class="form-in vax-next" title="Next Due Date" />
+    <button type="button" class="btn-icon-sm" onclick="this.parentElement.remove()" style="color:#f87171;">❌</button>
+  `;
+  document.getElementById('vaccination-container').appendChild(div);
+}
+
+document.getElementById('record-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const vaxRows = Array.from(document.querySelectorAll('.vaccination-row'));
+  const vaccinations = vaxRows.map(row => ({
+    typeV: row.querySelector('.vax-type').value,
+    dateAdministered: row.querySelector('.vax-date').value,
+    nextDueDate: row.querySelector('.vax-next').value
+  }));
+
+  const payload = {
+    appointmentId: parseInt(document.getElementById('r-appt-id').value),
+    diagnosis: document.getElementById('r-diagnosis').value,
+    treatmentProvided: document.getElementById('r-treatment').value,
+    followUpRecommendations: document.getElementById('r-followup').value,
+    prescribedMedication: document.getElementById('r-meds').value,
+    vaccinations: vaccinations
+  };
+
+  const res = await fetch('/api/vet/records', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (res.ok) {
+    closeRecordModal();
+    loadRecords();
+  } else {
+    alert('Failed to save medical record.');
+  }
+});
+
+async function openAssign(apptId, apptDateTime) {
+  const panel = document.getElementById('assign-' + apptId);
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.assign-panel.open').forEach(p => p.classList.remove('open'));
+  if (isOpen) return;
+  panel.classList.add('open');
+
+  const listEl = document.getElementById('vet-list-' + apptId);
+  listEl.innerHTML = 'Loading vets…';
+  try {
+    const r = await fetch(`/api/vet/available-vets?dateTime=${encodeURIComponent(apptDateTime.replace(' ','T').split('.')[0])}`);
+    const vets = await r.json();
+    if (!vets.length) { listEl.innerHTML = '<p style="color:var(--text-muted);font-size:.82rem;">No vet coordinators found.</p>'; return; }
+    listEl.innerHTML = vets.map(v => `
+      <div class="vet-option ${!v.available?'busy':''}" onclick="${v.available ? `confirmWithVet(${apptId}, ${v.vetId})` : ''}">
+        <div class="vet-available-dot ${v.available?'ok':'busy'}"></div>
+        <span style="font-size:.85rem;font-weight:600;">Dr. ${v.name}</span>
+        <span style="font-size:.75rem;color:var(--text-secondary);margin-left:.4rem;">(${v.specialization})</span>
+        <span style="margin-left:auto;font-size:.75rem;color:${v.available?'var(--green-400)':'#f87171'};">${v.statusLabel}</span>
+      </div>`).join('');
+  } catch { listEl.innerHTML = '<p style="color:#f87171;font-size:.82rem;">Failed to load vets.</p>'; }
+}
+
+async function confirmWithVet(apptId, vetId) {
+  const r = await fetch(`/api/vet/appointments/${apptId}`, {
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ status:'confirmed', vetId })
+  });
+  if (r.ok) { loadAppointments(); }
+  else { alert('Failed to confirm'); }
+}
+
+async function cancelAppt(id) {
+  if (!confirm('Cancel this appointment?')) return;
+  await fetch(`/api/vet/appointments/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:'cancelled'}) });
+  loadAppointments();
+}
+
+async function deleteAppt(id) {
+  if (!confirm('Delete this appointment permanently?')) return;
+  await fetch(`/api/vet/appointments/${id}`, { method:'DELETE' });
+  loadAppointments(); loadRecords();
+}
+
+async function deleteRecord(id) {
+  if (!confirm('Delete this medical record?')) return;
+  await fetch(`/api/vet/records/${id}`, { method:'DELETE' });
+  loadRecords();
+}
+
+document.getElementById('vet-search').addEventListener('input', e => { sf.search = e.target.value; renderApptTable(); });
+document.getElementById('vet-filter-status').addEventListener('change', e => { sf.status = e.target.value; renderApptTable(); });
+document.getElementById('vet-clear').addEventListener('click', () => { sf.search=''; sf.status=''; document.getElementById('vet-search').value=''; document.getElementById('vet-filter-status').value=''; renderApptTable(); });
+
+loadAppointments(); loadRecords();
+</script>
+<script src="nav-manager.js"></script>
+</body>
+</html>

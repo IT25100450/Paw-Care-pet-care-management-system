@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – My Profile</title>
+  <meta name="description" content="View your PawCare profile, registered pets, bookings, vet appointments, and orders." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .profile-page { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+    .profile-header { display:flex; align-items:center; gap:2rem; margin-bottom:3rem; padding:2rem; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); }
+    .profile-avatar { width:80px; height:80px; background:linear-gradient(135deg,var(--green-600),var(--green-400)); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2rem; color:#fff; font-weight:700; flex-shrink:0; }
+    .profile-info h1 { font-size:1.6rem; color:var(--text-primary); margin:0 0 .3rem; }
+    .profile-info p { color:var(--text-secondary); font-size:.9rem; margin:.1rem 0; }
+    .badge { display:inline-block; background:rgba(34,197,94,.12); color:var(--green-400); padding:.2rem .6rem; border-radius:99px; font-size:.75rem; font-weight:600; margin-top:.5rem; }
+    .profile-section { margin-bottom:2.5rem; }
+    .profile-section h2 { font-size:1.2rem; color:var(--text-primary); margin-bottom:1rem; display:flex; align-items:center; gap:.5rem; }
+    .count { background:rgba(34,197,94,.12); color:var(--green-400); padding:.1rem .5rem; border-radius:99px; font-size:.8rem; }
+    .profile-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1rem; }
+    .profile-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); padding:1.2rem; position:relative; }
+    .card-title { font-weight:600; color:var(--text-primary); font-size:.95rem; margin-bottom:.4rem; }
+    .card-detail { color:var(--text-secondary); font-size:.82rem; margin:.12rem 0; }
+    .status-badge { display:inline-block; padding:.18rem .55rem; border-radius:99px; font-size:.72rem; font-weight:700; text-transform:capitalize; }
+    .status-badge.pending { background:rgba(234,179,8,.1); color:#eab308; }
+    .status-badge.confirmed { background:rgba(34,197,94,.1); color:var(--green-400); }
+    .status-badge.cancelled { background:rgba(239,68,68,.1); color:#f87171; }
+    .card-actions { display:flex; gap:.5rem; margin-top:.8rem; }
+    .btn-sm { padding:.3rem .8rem; border-radius:6px; font-size:.75rem; font-weight:600; border:none; cursor:pointer; font-family:'Inter',sans-serif; }
+    .btn-sm.edit { background:rgba(34,197,94,.1); color:var(--green-400); border:1px solid rgba(34,197,94,.2); }
+    .btn-sm.del  { background:rgba(239,68,68,.1); color:#f87171; border:1px solid rgba(239,68,68,.2); }
+    .btn-sm.cancel { background:rgba(234,179,8,.1); color:#eab308; border:1px solid rgba(234,179,8,.2); }
+    .btn-sm:hover { opacity:.8; }
+    .empty-state { text-align:center; padding:2.5rem; color:var(--text-muted); }
+    .empty-state .emoji { font-size:2.5rem; margin-bottom:.8rem; }
+    .add-pet-form { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); padding:1.2rem; margin-bottom:1.2rem; }
+    .add-pet-form .form-row { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:.8rem; align-items:end; }
+    .form-lbl { display:block; font-size:.78rem; font-weight:600; color:var(--text-secondary); margin-bottom:.25rem; }
+    .form-in  { background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); padding:.55rem .8rem; color:var(--text-primary); font-family:'Inter',sans-serif; font-size:.85rem; width:100%; box-sizing:border-box; }
+    .btn-add  { background:linear-gradient(135deg,var(--green-600),var(--green-500)); color:#fff; border:none; border-radius:var(--radius-sm); padding:.55rem 1.2rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; white-space:nowrap; }
+    .edit-overlay { background:var(--bg-surface); border:1px solid var(--border-active); border-radius:var(--radius-sm); padding:1rem; margin-top:.8rem; display:none; }
+    .edit-overlay.open { display:block; }
+    .edit-row { display:grid; grid-template-columns:1fr 1fr auto; gap:.6rem; align-items:end; }
+    @media(max-width:768px) { .add-pet-form .form-row,.edit-row { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="paw-logo">🐾</div><span class="brand-name">PawCare</span></div>
+  <div class="nav-links"></div>
+</nav>
+
+<main class="profile-page">
+  <div class="profile-header">
+    <div class="profile-avatar" id="profile-avatar">?</div>
+    <div class="profile-info">
+      <h1 id="profile-name">Loading…</h1>
+      <p id="profile-email"></p>
+      <p id="profile-phone"></p>
+      <span class="badge">🐾 Pet Owner</span>
+    </div>
+  </div>
+
+  <!-- My Pets -->
+  <section class="profile-section">
+    <h2>🐕 My Pets <span class="count" id="pet-count">0</span></h2>
+    <div class="add-pet-form">
+      <div class="form-row">
+        <div><label class="form-lbl" for="pet-name">Pet Name</label><input class="form-in" type="text" id="pet-name" placeholder="e.g. Buddy" /></div>
+        <div><label class="form-lbl" for="pet-species">Species</label><select class="form-in" id="pet-species"><option value="">Loading…</option></select></div>
+        <div><label class="form-lbl" for="pet-dob">Date of Birth</label><input class="form-in" type="date" id="pet-dob" /></div>
+        <div><button class="btn-add" onclick="addPet()">+ Add Pet</button></div>
+      </div>
+    </div>
+    <div class="profile-grid" id="pets-grid">
+      <div class="empty-state"><div class="emoji">🐾</div><p>No pets yet.</p></div>
+    </div>
+  </section>
+
+  <!-- My Bookings -->
+  <section class="profile-section">
+    <h2>📋 My Bookings <span class="count" id="booking-count">0</span></h2>
+    <div class="profile-grid" id="bookings-grid">
+      <div class="empty-state"><div class="emoji">📅</div><p>No bookings yet.</p></div>
+    </div>
+  </section>
+
+  <!-- My Vet Appointments -->
+  <section class="profile-section">
+    <h2>🩺 My Vet Appointments <span class="count" id="vet-count">0</span></h2>
+    <div class="profile-grid" id="vet-grid">
+      <div class="empty-state"><div class="emoji">🩺</div><p>No vet appointments yet.</p></div>
+    </div>
+  </section>
+
+    <!-- My Orders -->
+  <section class="profile-section">
+    <h2>🛍️ My Orders <span class="count" id="order-count">0</span></h2>
+    <div class="profile-grid" id="orders-grid">
+      <div class="empty-state"><div class="emoji">🛍️</div><p>No orders yet.</p></div>
+    </div>
+  </section>
+
+  <!-- Support Inquiries -->
+  <section class="profile-section">
+    <h2>🎧 Customer Support <span class="count" id="inq-count">0</span></h2>
+    <div class="add-pet-form">
+      <h3 style="font-size:.95rem;margin-bottom:.8rem;color:var(--text-primary);">Submit an Inquiry</h3>
+      <div class="form-row" style="grid-template-columns:1fr 2fr auto;">
+        <div><label class="form-lbl">Subject</label><input class="form-in" type="text" id="inq-sub" placeholder="e.g. Booking issue" /></div>
+        <div><label class="form-lbl">Message</label><input class="form-in" type="text" id="inq-msg" placeholder="How can we help?" /></div>
+        <div><button class="btn-add" onclick="submitInquiry()">Submit</button></div>
+      </div>
+    </div>
+    <div class="profile-grid" id="inq-grid">
+      <div class="empty-state"><div class="emoji">📫</div><p>No inquiries yet.</p></div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your pets, always.</span></div>
+</footer>
+
+<script>
+const user = JSON.parse(localStorage.getItem('pawcare_user') || '{}');
+if (!user.success || user.userType !== 'customer') window.location.href = 'login.html';
+
+document.getElementById('profile-name').textContent  = (user.firstName || '') + ' ' + (user.lastName || '');
+document.getElementById('profile-email').textContent = '📧 ' + (user.email || '—');
+document.getElementById('profile-phone').textContent = '📱 ' + (user.contactNo || '—');
+document.getElementById('profile-avatar').textContent = (user.firstName || '?')[0].toUpperCase();
+
+// Load species into dropdown
+fetch('/api/lookup/species').then(r => r.json()).then(species => {
+  const sel = document.getElementById('pet-species');
+  sel.innerHTML = '<option value="">Select Species</option>';
+  species.forEach(s => sel.innerHTML += `<option value="${s.specieId}">${s.specieName}</option>`);
+});
+
+/* ── PETS ──────────────────────────────────────────────────────── */
+function loadPets() {
+  fetch('/api/pets/owner/' + user.ownerId).then(r => r.json()).then(pets => {
+    document.getElementById('pet-count').textContent = pets.length;
+    const grid = document.getElementById('pets-grid');
+    if (!pets.length) { grid.innerHTML = '<div class="empty-state"><div class="emoji">🐾</div><p>No pets yet. Add one above!</p></div>'; return; }
+    grid.innerHTML = pets.map(p => `
+      <div class="profile-card" id="pet-card-${p.petId}">
+        <div class="card-title">🐾 ${p.name}</div>
+        <div class="card-detail">Species: ${p.specieName || '—'}</div>
+        <div class="card-detail">DOB: ${p.dateOfBirth || '—'}</div>
+        <div class="card-actions">
+          <button class="btn-sm edit" onclick="toggleEditPet(${p.petId}, '${p.name}', ${p.specieId}, '${p.dateOfBirth || ''}')">✏️ Edit</button>
+          <button class="btn-sm del" onclick="deletePet(${p.petId}, '${p.name}')">🗑️ Delete</button>
+        </div>
+        <div class="edit-overlay" id="edit-pet-${p.petId}">
+          <div class="edit-row">
+            <div><label class="form-lbl">Name</label><input class="form-in" id="ep-name-${p.petId}" value="${p.name}" /></div>
+            <div><label class="form-lbl">DOB</label><input class="form-in" type="date" id="ep-dob-${p.petId}" value="${p.dateOfBirth || ''}" /></div>
+            <div><button class="btn-add" onclick="saveEditPet(${p.petId})">Save</button></div>
+          </div>
+        </div>
+      </div>`).join('');
+  });
+}
+loadPets();
+
+function toggleEditPet(id) {
+  const panel = document.getElementById('edit-pet-' + id);
+  panel.classList.toggle('open');
+}
+
+function saveEditPet(id) {
+  const name = document.getElementById('ep-name-' + id).value.trim();
+  const dob  = document.getElementById('ep-dob-' + id).value;
+  if (!name) { alert('Name is required'); return; }
+  fetch('/api/pets/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, dateOfBirth: dob || null }) })
+    .then(r => r.json()).then(d => { if (d.error) { alert(d.error); return; } loadPets(); });
+}
+
+function deletePet(id, name) {
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  fetch('/api/pets/' + id, { method:'DELETE' }).then(() => loadPets());
+}
+
+function addPet() {
+  const name     = document.getElementById('pet-name').value.trim();
+  const specieId = document.getElementById('pet-species').value;
+  const dob      = document.getElementById('pet-dob').value;
+  if (!name || !specieId) { alert('Please enter pet name and select species.'); return; }
+  fetch('/api/pets', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name, specieId: parseInt(specieId), ownerId: user.ownerId, dateOfBirth: dob || null }) })
+    .then(r => r.json()).then(data => {
+      if (data.error) { alert(data.error); return; }
+      document.getElementById('pet-name').value = '';
+      document.getElementById('pet-dob').value = '';
+      loadPets();
+    });
+}
+
+/* ── BOOKINGS ───────────────────────────────────────────────────── */
+function statusBadge(s) { return `<span class="status-badge ${s||'pending'}">${s||'pending'}</span>`; }
+
+function loadBookings() {
+  fetch('/api/bookings/owner/' + user.ownerId).then(r => r.json()).then(bookings => {
+    document.getElementById('booking-count').textContent = bookings.length;
+    const grid = document.getElementById('bookings-grid');
+    if (!bookings.length) { grid.innerHTML = '<div class="empty-state"><div class="emoji">📅</div><p>No bookings yet.</p></div>'; return; }
+    grid.innerHTML = bookings.map(b => {
+      const dt = b.bookingDateTime ? new Date(b.bookingDateTime).toLocaleString('en-US', { dateStyle:'medium', timeStyle:'short' }) : '—';
+      const checkout = b.checkoutDate ? `<div class="card-detail">Check-out: ${b.checkoutDate}</div>` : '';
+      const kennel   = b.kennelNo    ? `<div class="card-detail">Kennel: ${b.kennelNo}</div>` : '';
+      const cancelBtn = (b.status === 'pending') ? `<button class="btn-sm cancel" onclick="cancelBooking(${b.bookingId})">Cancel</button>` : '';
+      return `<div class="profile-card">
+        <div class="card-title">${b.service === 'Boarding' ? '🏠' : '✂️'} ${b.service || 'Booking'} #${b.bookingId}</div>
+        <div class="card-detail">Pet: ${b.petName || '—'}</div>
+        <div class="card-detail">Date: ${dt}</div>
+        ${checkout}${kennel}
+        <div class="card-detail">Status: ${statusBadge(b.status)}</div>
+        <div class="card-actions">${cancelBtn}</div>
+      </div>`;
+    }).join('');
+  }).catch(() => { document.getElementById('bookings-grid').innerHTML = '<div class="empty-state"><div class="emoji">⚠️</div><p>Could not load bookings.</p></div>'; });
+}
+loadBookings();
+
+function cancelBooking(id) {
+  if (!confirm('Cancel this booking?')) return;
+  fetch('/api/bookings/' + id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: 'cancelled' }) })
+    .then(() => loadBookings());
+}
+
+/* ── VET APPOINTMENTS ───────────────────────────────────────────── */
+function loadVetAppointments() {
+  fetch('/api/vet/appointments/owner/' + user.ownerId).then(r => r.json()).then(apps => {
+    document.getElementById('vet-count').textContent = apps.length;
+    const grid = document.getElementById('vet-grid');
+    if (!apps.length) { grid.innerHTML = '<div class="empty-state"><div class="emoji">🩺</div><p>No vet appointments yet.</p></div>'; return; }
+    grid.innerHTML = apps.map(a => {
+      const dt = a.appointmentDateTime ? new Date(a.appointmentDateTime).toLocaleString('en-US', { dateStyle:'medium', timeStyle:'short' }) : '—';
+      const cancelBtn = (a.status === 'pending') ? `<button class="btn-sm cancel" onclick="cancelVet(${a.appointmentId})">Cancel</button>` : '';
+      const isOpen = ['pending','confirmed'].includes((a.status || 'pending').toLowerCase());
+      const openStyle = isOpen ? 'border:1px solid rgba(239,68,68,.55);background:linear-gradient(180deg,rgba(239,68,68,.08),transparent);box-shadow:0 0 0 1px rgba(239,68,68,.15);' : '';
+      const openTag = isOpen ? `<div style="display:inline-block;margin-bottom:.4rem;padding:.15rem .55rem;border-radius:99px;font-size:.7rem;font-weight:700;color:#f87171;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);">🔴 Active booking for ${a.petName || 'this pet'}</div>` : '';
+      return `<div class="profile-card" style="${openStyle}">
+        ${openTag}
+        <div class="card-title">🩺 Appointment #${a.appointmentId}</div>
+        <div class="card-detail">Pet: ${a.petName || '—'}</div>
+        <div class="card-detail">Date: ${dt}</div>
+        <div class="card-detail">Reason: ${a.reason || '—'}</div>
+        <div class="card-detail">Vet: ${a.vetName && a.vetName !== 'Unassigned' ? 'Dr. ' + a.vetName : 'Unassigned'}</div>
+        <div class="card-detail">Status: ${statusBadge(a.status)}</div>
+        <div class="card-actions">${cancelBtn}</div>
+      </div>`;
+    }).join('');
+  }).catch(() => { document.getElementById('vet-grid').innerHTML = '<div class="empty-state"><div class="emoji">⚠️</div><p>Could not load appointments.</p></div>'; });
+}
+loadVetAppointments();
+
+function cancelVet(id) {
+  if (!confirm('Cancel this vet appointment?')) return;
+  fetch('/api/vet/appointments/' + id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: 'cancelled' }) })
+    .then(() => loadVetAppointments());
+}
+
+/* ── ORDERS ─────────────────────────────────────────────────────── */
+function loadOrders() {
+  fetch('/api/orders/owner/' + user.ownerId).then(r => r.json()).then(orders => {
+    document.getElementById('order-count').textContent = orders.length;
+    const grid = document.getElementById('orders-grid');
+    if (!orders.length) { grid.innerHTML = '<div class="empty-state"><div class="emoji">🛍️</div><p>No orders yet.</p></div>'; return; }
+    grid.innerHTML = orders.map(o => {
+      const dt = o.orderDate ? new Date(o.orderDate).toLocaleDateString('en-US', { dateStyle:'medium' }) : '—';
+      const items = (o.items || []).map(i => `
+        <div class="card-detail" style="padding:.2rem 0;border-bottom:1px solid var(--border);">
+          🛒 ${i.productName} &times;${i.quantity} &mdash; <strong>LKR ${Number(i.lineTotal || 0).toLocaleString()}</strong>
+        </div>`).join('');
+      const canCancel = o.status === 'confirmed';
+      return `<div class="profile-card">
+        <div class="card-title">🛍️ Order #${o.orderId}</div>
+        <div class="card-detail">Date: ${dt}</div>
+        <div style="margin:.5rem 0;">${items}</div>
+        <div class="card-detail"><strong>Total: LKR ${Number(o.totalPrice || 0).toLocaleString()}</strong></div>
+        <div class="card-detail">Status: ${statusBadge(o.status)}</div>
+        <div class="card-actions">
+          ${canCancel ? `<button class="btn-sm cancel" onclick="cancelOrder(${o.orderId})">❌ Cancel Order</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }).catch(() => { document.getElementById('orders-grid').innerHTML = '<div class="empty-state"><div class="emoji">⚠️</div><p>Could not load orders.</p></div>'; });
+}
+loadOrders();
+
+function cancelOrder(id) {
+  if (!confirm('Cancel this order? Stock will be restored.')) return;
+  fetch('/api/orders/' + id + '/cancel', { method: 'PATCH' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { alert('Error: ' + d.error); return; }
+      loadOrders();
+    });
+}
+
+/* ── SUPPORT INQUIRIES ───────────────────────────────────────────── */
+function loadInquiries() {
+  fetch('/api/support/inquiries/owner/' + user.ownerId).then(r => r.json()).then(inqs => {
+    document.getElementById('inq-count').textContent = inqs.length;
+    const grid = document.getElementById('inq-grid');
+    if (!inqs.length) { grid.innerHTML = '<div class="empty-state"><div class="emoji">📫</div><p>No inquiries yet.</p></div>'; return; }
+    grid.innerHTML = inqs.map(i => {
+      const dt = i.createdAt ? new Date(i.createdAt).toLocaleDateString('en-US', { dateStyle:'medium' }) : '—';
+      const reply = i.response ? `<div style="margin-top:.8rem;padding:.5rem;background:rgba(34,197,94,.1);border-left:2px solid var(--green-500);font-size:.8rem;"><strong>Support:</strong> ${i.response}</div>` : '';
+      return `<div class="profile-card">
+        <div class="card-title">📨 ${i.subject}</div>
+        <div class="card-detail" style="margin-bottom:.5rem;">${i.message}</div>
+        <div class="card-detail">Date: ${dt}</div>
+        <div class="card-detail">Status: <span class="status-badge ${i.status.toLowerCase()}">${i.status}</span></div>
+        ${reply}
+      </div>`;
+    }).join('');
+  }).catch(() => { document.getElementById('inq-grid').innerHTML = '<div class="empty-state"><div class="emoji">⚠️</div><p>Could not load inquiries.</p></div>'; });
+}
+loadInquiries();
+
+function submitInquiry() {
+  const subject = document.getElementById('inq-sub').value.trim();
+  const message = document.getElementById('inq-msg').value.trim();
+  if (!subject || !message) { alert('Subject and message are required.'); return; }
+  
+  fetch('/api/support/inquiries', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ownerId: user.ownerId, subject, message })
+  }).then(r => r.json()).then(d => {
+    if (d.error) { alert(d.error); return; }
+    document.getElementById('inq-sub').value = '';
+    document.getElementById('inq-msg').value = '';
+    loadInquiries();
+    alert('Inquiry submitted successfully!');
+  });
+}
+</script>
+<script src="nav-manager.js"></script>
+</body>
+</html>
