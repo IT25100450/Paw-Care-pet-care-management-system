@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – Book a Grooming Service</title>
+  <meta name="description"
+    content="PawCare lets registered pet owners book grooming services quickly and easily. Select your pet, choose a service, pick a time slot and confirm!" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+  <!-- ── NAV ─────────────────────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <div class="paw-logo">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
+        </svg>
+        🐾
+      </div>
+      <span class="brand-name">PawCare</span>
+    </div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="booking_main.html" class="nav-link active">Book Service</a>
+      <a href="vet_main.html" class="nav-link">Veterinary</a>
+      <a href="store_main.html" class="nav-link">Pet Store</a>
+    </div>
+    <a href="admin.html" class="btn-nav-admin" id="nav-admin-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      Admin
+    </a>
+    <div class="nav-user">
+      <div class="user-avatar"></div>
+      <span class="user-name">~logged user~</span>
+    </div>
+  </nav>
+
+  <!-- ── HERO ─────────────────────────────────────────────────────────── -->
+  <section class="hero">
+
+    <div class="hero-video-wrapper" id="hero-video-wrapper">
+      <video id="hero-bg-video" class="hero-bg-video" autoplay muted loop playsinline poster="">
+        <!-- 📌 REPLACE THE src BELOW WITH YOUR VIDEO FILE PATH -->
+        <source src="Videos/Create_animation_with_the_giv.mp4" type="video/mp4" />
+        <!-- Fallback for browsers that don't support video -->
+        Your browser does not support the video tag.
+      </video>
+      <!-- Dark overlay so text remains readable over the video -->
+      <div class="hero-video-overlay"></div>
+      <!-- Placeholder shown when no video file is connected yet -->
+      <div class="hero-video-placeholder" id="hero-video-placeholder">
+        <div class="placeholder-play-icon">🎬</div>
+        <p class="placeholder-label">Video Background</p>
+        <p class="placeholder-hint">Connect your video file — see instructions below ↓</p>
+      </div>
+    </div>
+
+    <div class="hero-bg-orb orb1"></div>
+    <div class="hero-bg-orb orb2"></div>
+    <div class="paw-prints-bg">
+      <span class="paw-bg-icon" style="top:10%;left:5%;font-size:4rem;opacity:.05">🐾</span>
+      <span class="paw-bg-icon" style="top:70%;left:80%;font-size:6rem;opacity:.04">🐾</span>
+      <span class="paw-bg-icon" style="top:40%;left:90%;font-size:3rem;opacity:.06">🐾</span>
+      <span class="paw-bg-icon" style="top:80%;left:10%;font-size:5rem;opacity:.04">🐾</span>
+    </div>
+
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        Trusted Pet Care Platform
+      </div>
+      <h1 class="hero-title">
+        Premium Care for<br />
+        <span class="gradient-text">Your Beloved Pets</span>
+      </h1>
+      <p class="hero-subtitle">
+        Book grooming sessions in seconds. Registered pet owners get instant access to verified care
+        professionals and real-time slot availability.
+      </p>
+
+      <div class="hero-cta-group">
+        <a href="booking.html" class="btn-primary" id="book-now-btn">
+          <span class="btn-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+              <path d="M9 14l1.5 1.5L13 12" />
+            </svg>
+          </span>
+          Book Appointment
+        </a>
+      </div>
+
+      <div class="hero-stats" style="position:relative;z-index:3;background:rgba(5,14,10,.55);backdrop-filter:blur(8px);border:1px solid rgba(34,197,94,.15);border-radius:14px;padding:.9rem 1.4rem;display:inline-flex;gap:2rem;align-items:center;">
+        <div class="stat-item">
+          <span class="stat-number">500+</span>
+          <span class="stat-label">Happy Pets</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-number">98%</span>
+          <span class="stat-label">Satisfaction Rate</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-number">24/7</span>
+          <span class="stat-label">Support</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <!-- Main services showcase card -->
+      <div class="visual-card main-card services-showcase">
+        <div class="showcase-title">What We Offer</div>
+        <div class="showcase-list">
+
+          <div class="showcase-item">
+            <div class="showcase-icon">✂️</div>
+            <div class="showcase-info">
+              <div class="showcase-name">Grooming</div>
+              <div class="showcase-desc">Bath · Styling · Nail trim</div>
+            </div>
+          </div>
+
+          <div class="showcase-item">
+            <div class="showcase-icon">🩺</div>
+            <div class="showcase-info">
+              <div class="showcase-name">Veterinary</div>
+              <div class="showcase-desc">Consultations · Records</div>
+            </div>
+          </div>
+          <div class="showcase-item">
+            <div class="showcase-icon">🛍️</div>
+            <div class="showcase-info">
+              <div class="showcase-name">Pet Store</div>
+              <div class="showcase-desc">Food · Toys · Accessories</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="visual-card mini-card card-left">
+        <div class="mini-icon">🩺</div>
+        <div class="mini-label">Vet Care</div>
+        <div class="mini-sub">Available</div>
+      </div>
+      <div class="visual-card mini-card card-right">
+        <div class="mini-icon">🛍️</div>
+        <div class="mini-label">Pet Store</div>
+        <div class="mini-sub">Open now</div>
+      </div>
+    </div>
+  </section>
+
+
+
+  <!-- ── HOW IT WORKS ──────────────────────────────────────────────────── -->
+  <section class="how-section">
+    <div class="section-header">
+      <h2 class="section-title">How It Works</h2>
+      <p class="section-sub">Simple booking in just four steps</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-number">01</div>
+        <div class="step-icon">🐶</div>
+        <h4>Select Your Pet</h4>
+        <p>Choose your registered pet from your PawCare profile.</p>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step-card">
+        <div class="step-number">02</div>
+        <div class="step-icon">🛎️</div>
+        <h4>Pick a Service</h4>
+        <p>Select grooming for your furry friend.</p>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step-card">
+        <div class="step-number">03</div>
+        <div class="step-icon">📅</div>
+        <h4>Choose Date & Time</h4>
+        <p>Browse available slots on our real-time calendar.</p>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step-card">
+        <div class="step-number">04</div>
+        <div class="step-icon">✅</div>
+        <h4>Confirm Booking</h4>
+        <p>Submit and receive an instant confirmation with all details.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ────────────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="footer-brand">
+      <span class="footer-logo">🐾 PawCare</span>
+      <span class="footer-tagline">Caring for your pets, always.</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+  <script src="dotfield.js"></script>
+  <script src="nav-manager.js"></script>
+</body>
+
+</html>

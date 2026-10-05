@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PawCare – Admin Dashboard</title>
+  <meta name="description" content="Admin dashboard to monitor and manage all PawCare booking reservations. View, filter, update, and cancel bookings in real time."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<!-- ── NAV ─────────────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="paw-logo">🐾</div>
+    <span class="brand-name">PawCare</span>
+  </div>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="booking_main.html" class="nav-link">Book Service</a>
+    <a href="vet_main.html" class="nav-link">Veterinary</a>
+    <a href="store_main.html" class="nav-link">Pet Store</a>
+    <a href="admin.html" class="nav-link active">Admin</a>
+  </div>
+  <div class="nav-user">
+    <div class="user-avatar admin-av">ADM</div>
+    <span class="user-name">Administrator</span>
+  </div>
+</nav>
+
+<!-- ── ADMIN DASHBOARD ───────────────────────────────────────────────── -->
+<div class="admin-page">
+
+  <div class="admin-header">
+    <div>
+      <h1 class="admin-title">Booking Reservations</h1>
+      <p class="admin-sub">Monitor and manage all PawCare appointments</p>
+    </div>
+    <div style="display:flex;gap:1rem;">
+      <a href="staff_admin.html" class="btn-primary admin-new-btn" style="background:var(--bg-surface);color:var(--green-400);border:1px solid var(--green-400);">
+        👥 Manage Admins
+      </a>
+      <a href="vets_admin.html" class="btn-primary admin-new-btn" style="background:var(--bg-surface);color:var(--green-400);border:1px solid var(--green-400);">
+        🩺 Manage Vets
+      </a>
+    </div>
+  </div>
+
+
+  <!-- Admin tabs injected by nav-manager.js -->
+
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card" id="kpi-total">
+      <div class="kpi-icon">📋</div>
+      <div class="kpi-info">
+        <div class="kpi-value" id="kpi-total-val">0</div>
+        <div class="kpi-label">Total Bookings</div>
+      </div>
+    </div>
+    <div class="kpi-card" id="kpi-confirmed">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-info">
+        <div class="kpi-value" id="kpi-confirmed-val">0</div>
+        <div class="kpi-label">Confirmed</div>
+      </div>
+    </div>
+    <div class="kpi-card" id="kpi-pending">
+      <div class="kpi-icon">⏳</div>
+      <div class="kpi-info">
+        <div class="kpi-value" id="kpi-pending-val">0</div>
+        <div class="kpi-label">Pending</div>
+      </div>
+    </div>
+    <div class="kpi-card" id="kpi-cancelled">
+      <div class="kpi-icon">❌</div>
+      <div class="kpi-info">
+        <div class="kpi-value" id="kpi-cancelled-val">0</div>
+        <div class="kpi-label">Cancelled</div>
+      </div>
+    </div>
+    <div class="kpi-card" id="kpi-revenue">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-info">
+        <div class="kpi-value" id="kpi-revenue-val">LKR 0</div>
+        <div class="kpi-label">Total Revenue</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters & Search -->
+  <div class="admin-toolbar">
+    <div class="search-box">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="admin-search" placeholder="Search by owner, pet, booking ID…" class="search-input"/>
+    </div>
+    <div class="filter-row">
+      <select class="filter-select" id="filter-status">
+        <option value="">All Status</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="pending">Pending</option>
+        <option value="cancelled">Cancelled</option>
+        <option value="completed">Completed</option>
+      </select>
+      <select class="filter-select" id="filter-service">
+        <option value="">All Services</option>
+        <option value="Normal Grooming">Normal Grooming</option>
+        <option value="Full Grooming">Full Grooming</option>
+        <option value="Premium Grooming">Premium Grooming</option>
+        <option value="Boarding">Boarding</option>
+      </select>
+      <select class="filter-select" id="filter-sort">
+        <option value="newest">Newest First</option>
+        <option value="oldest">Oldest First</option>
+        <option value="name">Owner Name A-Z</option>
+      </select>
+      <button class="btn-ghost clear-btn" id="clear-filters">Clear Filters</button>
+    </div>
+  </div>
+
+  <!-- Bookings Table -->
+  <div class="table-wrapper">
+    <table class="bookings-table" id="bookings-table">
+      <thead>
+        <tr>
+          <th>Booking ID</th>
+          <th>Owner</th>
+          <th>Pet</th>
+          <th>Service</th>
+          <th>Date</th>
+          <th>Time Slot</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="bookings-tbody">
+        <!-- populated by JS -->
+      </tbody>
+    </table>
+    <div class="table-empty hidden" id="table-empty">
+      <div class="empty-icon">📋</div>
+      <p>No bookings found matching your filters.</p>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- ── BOOKING DETAIL MODAL ──────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="detail-modal">
+  <div class="modal-box detail-modal-box">
+    <div class="modal-close-btn" id="detail-modal-close">×</div>
+    <div class="modal-icon">📋</div>
+    <h2>Booking Details</h2>
+    <div class="confirm-grid" id="detail-grid" style="margin-top:1.5rem"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="detail-close-btn">Close</button>
+      <button class="btn-danger" id="detail-cancel-btn">Cancel Booking</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── CANCEL CONFIRM MODAL ──────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="cancel-modal">
+  <div class="modal-box">
+    <div class="modal-icon">⚠️</div>
+    <h2>Cancel Booking?</h2>
+    <p>Are you sure you want to cancel this booking? This action will free up the time slot and cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="cancel-no-btn">Keep Booking</button>
+      <button class="btn-danger" id="cancel-yes-btn">Yes, Cancel It</button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="footer-brand">
+    <span class="footer-logo">🐾 PawCare</span>
+    <span class="footer-tagline">Caring for your pets, always.</span>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+<script src="nav-manager.js"></script>
+</body>
+</html>
