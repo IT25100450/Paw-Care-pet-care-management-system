@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – Pet Store</title>
+  <meta name="description" content="Browse pet care products — food, toys, accessories and more at PawCare." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .store-page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .store-header {
+      margin-bottom: 2rem;
+    }
+
+    .store-header h1 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+
+    .store-header p {
+      font-size: .9rem;
+      color: var(--text-secondary);
+      margin-top: .3rem;
+    }
+
+    .store-toolbar {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .store-toolbar .search-box {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .store-toolbar .search-box input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: .7rem .9rem .7rem 2.5rem;
+      color: var(--text-primary);
+      font-size: .88rem;
+      outline: none;
+    }
+
+    .store-toolbar .search-box input:focus {
+      border-color: var(--border-active);
+    }
+
+    /* Product cards */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .product-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: all var(--transition);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .product-card:hover {
+      border-color: var(--border-active);
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-card), var(--accent-glow);
+    }
+
+    .pc-img {
+      height: 180px;
+      background: var(--bg-surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .pc-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .pc-img-placeholder {
+      font-size: 3rem;
+      opacity: .3;
+    }
+
+    .pc-cat {
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--green-400);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 1rem 1.2rem 0;
+    }
+
+    .pc-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      padding: .3rem 1.2rem 0;
+    }
+
+    .pc-desc {
+      font-size: .82rem;
+      color: var(--text-secondary);
+      padding: .3rem 1.2rem;
+      line-height: 1.5;
+      flex: 1;
+    }
+
+    .pc-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .8rem 1.2rem 1rem;
+      border-top: 1px solid var(--border);
+      margin-top: auto;
+    }
+
+    .pc-price {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--green-300);
+    }
+
+    .pc-stock {
+      font-size: .75rem;
+      color: var(--text-muted);
+    }
+
+    .store-empty {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+    }
+
+    .store-empty .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar">
+    <div class="nav-brand">
+      <div class="paw-logo">🐾</div><span class="brand-name">PawCare</span>
+    </div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="booking_main.html" class="nav-link">Book Service</a>
+      <a href="vet_main.html" class="nav-link">Veterinary</a>
+      <a href="store_main.html" class="nav-link active">Pet Store</a>
+    </div>
+    <a href="store_admin.html" class="btn-nav-admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" width="15" height="15">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M3 9h18M9 21V9" />
+      </svg> Store Admin</a>
+  </nav>
+
+  <!-- ── HERO ──────────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-video-wrapper" id="hero-video-wrapper">
+      <video id="hero-bg-video" class="hero-bg-video" autoplay muted loop playsinline poster="">
+        <!-- 📌 REPLACE THE src BELOW WITH YOUR STORE VIDEO FILE PATH -->
+        <source src="Videos/paw-background.mp4" type="video/mp4" />
+        <!-- Fallback for browsers that don't support video -->
+        Your browser does not support the video tag.
+      </video>
+      <!-- Dark overlay so text remains readable over the video -->
+      <div class="hero-video-overlay"></div>
+      <!-- Placeholder shown when no video file is connected yet -->
+      <div class="hero-video-placeholder" id="hero-video-placeholder">
+        <div class="placeholder-play-icon">🎬</div>
+        <p class="placeholder-label">Video Background</p>
+        <p class="placeholder-hint">Connect your store video file — replace the src in store_main.html</p>
+      </div>
+    </div>
+    <div class="hero-bg-orb orb1"></div>
+    <div class="hero-bg-orb orb2"></div>
+    <div class="paw-prints-bg">
+      <span class="paw-bg-icon" style="top:10%;left:5%;font-size:4rem;opacity:.05">🐾</span>
+      <span class="paw-bg-icon" style="top:70%;left:80%;font-size:6rem;opacity:.04">🐾</span>
+      <span class="paw-bg-icon" style="top:40%;left:90%;font-size:3rem;opacity:.06">🐾</span>
+    </div>
+    <div class="hero-content">
+      <div class="hero-badge"><span class="badge-dot"></span> Premium Products</div>
+      <h1 class="hero-title">Pet<br /><span class="gradient-text">Store</span></h1>
+      <p class="hero-subtitle">Browse premium pet care products — food, toys, accessories, and more. In-person purchase
+        only.</p>
+      <div class="hero-cta-group">
+        <a href="#store-search" class="btn-primary" onclick="document.getElementById('store-search').focus()">Search
+          Products</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="visual-card main-card services-showcase">
+        <div class="showcase-title">Categories</div>
+        <div class="showcase-list">
+          <div class="showcase-item">
+            <div class="showcase-icon">🦴</div>
+            <div class="showcase-info">
+              <div class="showcase-name">Premium Food</div>
+              <div class="showcase-desc">Nutrition for all breeds</div>
+            </div>
+          </div>
+          <div class="showcase-item">
+            <div class="showcase-icon">🎾</div>
+            <div class="showcase-info">
+              <div class="showcase-name">Toys & Accessories</div>
+              <div class="showcase-desc">Fun & comfort</div>
+            </div>
+          </div>
+          <div class="showcase-item">
+            <div class="showcase-icon">🧼</div>
+            <div class="showcase-info">
+              <div class="showcase-name">Grooming Supplies</div>
+              <div class="showcase-desc">Shampoos & brushes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="store-page">
+    <div class="store-toolbar">
+      <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input type="text" id="store-search" placeholder="Search products…" class="search-input" />
+      </div>
+      <select class="filter-select" id="store-cat-filter">
+        <option value="">All Categories</option>
+      </select>
+    </div>
+
+    <div class="product-grid" id="product-grid"></div>
+    <div class="store-empty hidden" id="store-empty">
+      <div class="empty-icon">🛍️</div>
+      <p>No products found. Check back soon!</p>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your
+        pets, always.</span></div>
+  </footer>
+  <script src="store.js?v=2"></script>
+  <script src="dotfield.js"></script>
+  <script src="nav-manager.js"></script>
+  <script>
+    (function initVideoBg() {
+      const video = document.getElementById('hero-bg-video');
+      const placeholder = document.getElementById('hero-video-placeholder');
+      if (!video || !placeholder) return;
+
+      const src = video.querySelector('source')?.getAttribute('src') || '';
+      if (!src || src === 'YOUR_VIDEO_FILE.mp4') return;
+
+      video.addEventListener('canplay', () => {
+        placeholder.style.transition = 'opacity .8s ease';
+        placeholder.style.opacity = '0';
+        setTimeout(() => { placeholder.style.display = 'none'; }, 800);
+      });
+
+      video.addEventListener('error', () => {
+        const hint = placeholder.querySelector('.placeholder-hint');
+        if (hint) hint.textContent = '⚠️ Video file not found – check the file path in store_main.html';
+      });
+    })();
+  </script>
+</body>
+
+</html>
