@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – Boarding Services Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .btn-icon-sm { background:none; border:none; cursor:pointer; font-size:1rem; padding:.2rem; }
+    .status-badge { font-size:.72rem; font-weight:700; padding:.2rem .6rem; border-radius:99px; text-transform:capitalize; }
+    .status-badge.pending   { color:#eab308; background:rgba(234,179,8,.1); }
+    .status-badge.confirmed { color:var(--green-400); background:rgba(34,197,94,.1); }
+    .status-badge.cancelled { color:#f87171; background:rgba(239,68,68,.1); }
+    .assign-panel { background:var(--bg-surface); border:1px solid var(--border-active); border-radius:8px; padding:1rem; margin-top:.6rem; display:none; gap:.6rem; align-items:flex-end; }
+    .assign-panel.open { display:flex; flex-wrap:wrap; }
+    .assign-panel select, .assign-panel input { background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:.5rem .8rem; color:var(--text-primary); font-family:'Inter',sans-serif; font-size:.85rem; }
+    .btn-confirm-sm { padding:.5rem 1rem; background:linear-gradient(135deg,var(--green-600),var(--green-500)); color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; font-size:.82rem; }
+    .edit-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:1000; }
+    .edit-overlay.open { display:flex; }
+    .edit-modal { background:var(--bg-card); border:1px solid var(--border-active); border-radius:var(--radius-lg); padding:1.8rem; width:min(480px,92vw); }
+    .edit-modal h3 { font-size:1.1rem; font-weight:700; color:var(--text-primary); margin-bottom:1.2rem; }
+    .edit-grid { display:grid; grid-template-columns:1fr 1fr; gap:.9rem; }
+    .edit-grid .full { grid-column:1 / -1; }
+    .edit-grid label { display:block; font-size:.78rem; font-weight:600; color:var(--text-secondary); margin-bottom:.3rem; }
+    .edit-grid input, .edit-grid select { width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:.6rem .8rem; color:var(--text-primary); font-family:'Inter',sans-serif; font-size:.88rem; }
+    .edit-actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.3rem; }
+    .edit-err { color:#f87171; font-size:.82rem; margin-top:.8rem; min-height:1rem; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="paw-logo">🐾</div><span class="brand-name">PawCare</span></div>
+  <div class="nav-links"></div>
+</nav>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <div><h1 class="admin-title">🏠 Boarding Services Dashboard</h1><p class="admin-sub">Review pending bookings, assign kennels, and manage boarders</p></div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-icon">📋</div><div class="kpi-info"><div class="kpi-value" id="bkpi-total">0</div><div class="kpi-label">Total Bookings</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon">⏳</div><div class="kpi-info"><div class="kpi-value" id="bkpi-pending">0</div><div class="kpi-label">Pending</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon">✅</div><div class="kpi-info"><div class="kpi-value" id="bkpi-confirmed">0</div><div class="kpi-label">Confirmed</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon">❌</div><div class="kpi-info"><div class="kpi-value" id="bkpi-cancelled">0</div><div class="kpi-label">Cancelled</div></div></div>
+  </div>
+
+  <div class="admin-toolbar">
+    <div class="search-box">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="board-search" placeholder="Search pet, owner…" class="search-input" />
+    </div>
+    <div class="filter-row">
+      <select class="filter-select" id="board-filter-status">
+        <option value="">All Status</option>
+        <option value="pending">Pending</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+      <button class="btn-ghost clear-btn" id="board-clear">Clear</button>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="bookings-table">
+      <thead><tr><th>ID</th><th>Pet</th><th>Owner</th><th>Check-In</th><th>Check-Out</th><th>Kennel</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody id="board-admin-tbody"></tbody>
+    </table>
+    <div class="table-empty hidden" id="board-table-empty"><div class="empty-icon">🏠</div><p>No boarding bookings found.</p></div>
+  </div>
+</div>
+
+<div class="edit-overlay" id="edit-overlay">
+  <div class="edit-modal" role="dialog" aria-labelledby="edit-title">
+    <h3 id="edit-title">✏️ Update Boarding Record</h3>
+    <div class="edit-grid">
+      <div class="full"><label>Pet / Owner</label><input id="edit-who" disabled /></div>
+      <div><label for="edit-checkin">Check-In</label><input type="date" id="edit-checkin" /></div>
+      <div><label for="edit-checkout">Check-Out</label><input type="date" id="edit-checkout" /></div>
+      <div>
+        <label for="edit-kennel">Kennel</label>
+        <select id="edit-kennel">
+          <option value="">Not Assigned</option>
+          <option value="Small">Small</option>
+          <option value="Medium">Medium</option>
+          <option value="Large">Large</option>
+        </select>
+      </div>
+      <div>
+        <label for="edit-status">Status</label>
+        <select id="edit-status">
+          <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+    </div>
+    <div class="edit-err" id="edit-err"></div>
+    <div class="edit-actions">
+      <button class="btn-ghost" id="edit-cancel" type="button">Cancel</button>
+      <button class="btn-confirm-sm" id="edit-save" type="button">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer"><div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your pets, always.</span></div></footer>
+
+<script>
+let allBookings = [], filtBookings = [];
+const sf = { search:'', status:'' };
+
+function sbadge(s) { return `<span class="status-badge ${s||'pending'}">${s||'pending'}</span>`; }
+function fmtDate(s) { return s ? new Date(s).toLocaleDateString('en-US',{dateStyle:'medium'}) : '—'; }
+
+async function loadBookings() {
+  try {
+    const r = await fetch('/api/bookings');
+    const all = await r.json();
+    allBookings = all.filter(b => b.service === 'Boarding');
+    document.getElementById('bkpi-total').textContent     = allBookings.length;
+    document.getElementById('bkpi-pending').textContent   = allBookings.filter(b=>b.status==='pending').length;
+    document.getElementById('bkpi-confirmed').textContent = allBookings.filter(b=>b.status==='confirmed').length;
+    document.getElementById('bkpi-cancelled').textContent = allBookings.filter(b=>b.status==='cancelled').length;
+    renderTable();
+  } catch(e) { console.error(e); }
+}
+
+function renderTable() {
+  filtBookings = allBookings.filter(b => {
+    const q = sf.search.toLowerCase();
+    const matchSearch = !q || (b.petName||'').toLowerCase().includes(q) || (b.ownerName||'').toLowerCase().includes(q);
+    const matchStatus = !sf.status || b.status === sf.status;
+    return matchSearch && matchStatus;
+  });
+
+  const tbody = document.getElementById('board-admin-tbody');
+  const empty = document.getElementById('board-table-empty');
+  if (!filtBookings.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = filtBookings.map(b => `
+    <tr id="brow-${b.bookingId}">
+      <td>#${b.bookingId}</td>
+      <td>${b.petName||'—'}</td>
+      <td>${b.ownerName||'—'}</td>
+      <td>${fmtDate(b.bookingDateTime)}</td>
+      <td>${b.checkoutDate || '—'}</td>
+      <td>${b.kennelNo ? `<span style="color:var(--green-400);">${b.kennelNo}</span>` : '<span style="color:var(--text-muted);">Not assigned</span>'}</td>
+      <td>${sbadge(b.status)}</td>
+      <td>
+        ${b.status === 'pending' ? `<button class="btn-icon-sm" title="Assign Kennel & Confirm" onclick="openAssign(${b.bookingId})">✅</button>` : ''}
+        <button class="btn-icon-sm" title="Update" onclick="openEdit(${b.bookingId})" style="margin-left:.3rem;">✏️</button>
+        ${b.status !== 'cancelled' ? `<button class="btn-icon-sm" title="Cancel" onclick="cancelBooking(${b.bookingId})" style="margin-left:.3rem;">❌</button>` : ''}
+        <button class="btn-icon-sm" title="Delete" onclick="deleteBooking(${b.bookingId})" style="margin-left:.3rem;">🗑️</button>
+        <div class="assign-panel" id="assign-${b.bookingId}">
+          <div>
+            <label style="font-size:.78rem;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:.25rem;">Kennel Assignment</label>
+            <select id="kennel-select-${b.bookingId}">
+              <option value="Small">Small (LKR 1,500/day)</option>
+              <option value="Medium" selected>Medium (LKR 2,500/day)</option>
+              <option value="Large">Large (LKR 3,500/day)</option>
+            </select>
+          </div>
+          <button class="btn-confirm-sm" onclick="confirmWithKennel(${b.bookingId})">Confirm Booking</button>
+          <button class="btn-icon-sm" onclick="closeAssign(${b.bookingId})" title="Cancel" style="margin-left:.2rem;">✕</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function openAssign(id) {
+  document.querySelectorAll('.assign-panel.open').forEach(p => p.classList.remove('open'));
+  document.getElementById('assign-' + id).classList.add('open');
+}
+function closeAssign(id) { document.getElementById('assign-' + id).classList.remove('open'); }
+
+async function confirmWithKennel(id) {
+  const kennelNo = document.getElementById('kennel-select-' + id).value;
+  const r = await fetch(`/api/bookings/${id}`, {
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ status:'confirmed', kennelNo })
+  });
+  if (r.ok) { closeAssign(id); loadBookings(); }
+  else { alert('Failed to confirm'); }
+}
+
+async function cancelBooking(id) {
+  if (!confirm('Cancel this booking?')) return;
+  await fetch(`/api/bookings/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:'cancelled'}) });
+  loadBookings();
+}
+
+async function deleteBooking(id) {
+  if (!confirm('Delete this booking permanently?')) return;
+  await fetch(`/api/bookings/${id}`, { method:'DELETE' });
+  loadBookings();
+}
+
+let editingId = null;
+function openEdit(id) {
+  const b = allBookings.find(x => x.bookingId === id);
+  if (!b) return;
+  editingId = id;
+  document.getElementById('edit-who').value      = `${b.petName || '—'} / ${b.ownerName || '—'}`;
+  document.getElementById('edit-checkin').value  = b.bookingDateTime ? b.bookingDateTime.substring(0, 10) : '';
+  document.getElementById('edit-checkout').value = b.checkoutDate || '';
+  document.getElementById('edit-kennel').value   = b.kennelNo || '';
+  document.getElementById('edit-status').value   = b.status || 'pending';
+  document.getElementById('edit-err').textContent = '';
+  document.getElementById('edit-overlay').classList.add('open');
+}
+function closeEdit() { document.getElementById('edit-overlay').classList.remove('open'); editingId = null; }
+
+document.getElementById('edit-cancel').addEventListener('click', closeEdit);
+document.getElementById('edit-overlay').addEventListener('click', e => { if (e.target.id === 'edit-overlay') closeEdit(); });
+document.getElementById('edit-save').addEventListener('click', async () => {
+  const err = document.getElementById('edit-err');
+  const payload = {
+    checkinDate:  document.getElementById('edit-checkin').value,
+    checkoutDate: document.getElementById('edit-checkout').value,
+    kennelNo:     document.getElementById('edit-kennel').value.trim(),
+    status:       document.getElementById('edit-status').value
+  };
+  if (payload.checkinDate && payload.checkoutDate && payload.checkoutDate <= payload.checkinDate) {
+    err.textContent = 'Check-out must be after check-in.'; return;
+  }
+  if (payload.status === 'confirmed' && !payload.kennelNo) {
+    err.textContent = 'Assign a kennel before confirming.'; return;
+  }
+  const r = await fetch(`/api/bookings/${editingId}/boarding`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  });
+  if (r.ok) { closeEdit(); loadBookings(); }
+  else { const d = await r.json().catch(() => ({})); err.textContent = d.error || 'Update failed.'; }
+});
+
+document.getElementById('board-search').addEventListener('input', e => { sf.search = e.target.value; renderTable(); });
+document.getElementById('board-filter-status').addEventListener('change', e => { sf.status = e.target.value; renderTable(); });
+document.getElementById('board-clear').addEventListener('click', () => { sf.search=''; sf.status=''; document.getElementById('board-search').value=''; document.getElementById('board-filter-status').value=''; renderTable(); });
+
+loadBookings();
+</script>
+<script src="nav-manager.js"></script>
+</body>
+</html>
