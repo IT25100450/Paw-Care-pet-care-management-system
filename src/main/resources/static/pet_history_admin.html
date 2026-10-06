@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – Global Pet History</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .btn-icon-sm { background:none; border:none; cursor:pointer; font-size:1rem; padding:.2rem; }
+    .status-badge { font-size:.72rem; font-weight:700; padding:.2rem .6rem; border-radius:99px; text-transform:capitalize; }
+    
+    .history-layout { display:grid; grid-template-columns:300px 1fr; gap:2rem; align-items:start; }
+    @media(max-width:768px) { .history-layout { grid-template-columns:1fr; } }
+    
+    .pet-list-sidebar { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); padding:1rem; height:calc(100vh - 180px); overflow-y:auto; }
+    .pet-item { padding:.8rem; border-radius:var(--radius-sm); border:1px solid transparent; cursor:pointer; transition:all .2s; margin-bottom:.5rem; }
+    .pet-item:hover { background:var(--bg-surface); }
+    .pet-item.active { background:var(--bg-surface); border-color:var(--green-500); }
+    
+    .history-timeline { padding:1.5rem; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); min-height:400px; }
+    .timeline-event { padding:1rem; border-left:2px solid var(--border-active); margin-left:1rem; position:relative; margin-bottom:1rem; background:var(--bg-surface); border-radius:0 var(--radius-sm) var(--radius-sm) 0; }
+    .timeline-event::before { content:''; position:absolute; left:-6px; top:1.2rem; width:10px; height:10px; border-radius:50%; background:var(--green-500); }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="paw-logo">🐾</div><span class="brand-name">PawCare</span></div>
+  <div class="nav-links"></div>
+</nav>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="admin-title">📖 Global Pet History</h1>
+      <p class="admin-sub">Centralized dashboard for viewing grooming, boarding, and medical histories.</p>
+    </div>
+  </div>
+
+  <div class="history-layout">
+    <div class="pet-list-sidebar">
+      <div style="margin-bottom:1rem;">
+        <input type="text" id="pet-search" class="search-input" placeholder="Search pets or owners…" style="width:100%;border-radius:4px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);padding:.5rem;" />
+      </div>
+      <div id="pet-list-container">Loading pets…</div>
+    </div>
+    
+    <div class="history-timeline" id="history-view">
+      <div class="table-empty" style="padding:4rem 0;"><div class="empty-icon">👈</div><p>Select a pet to view their complete history</p></div>
+    </div>
+  </div>
+</div>
+
+<footer class="footer"><div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your pets, always.</span></div></footer>
+
+<script>
+const user = JSON.parse(localStorage.getItem('pawcare_user') || '{}');
+if (!user.success || user.userType !== 'staff') {
+    alert("Access Denied: Staff only.");
+    window.location.href = 'index.html';
+}
+
+let allPets = [];
+let activePetId = null;
+
+async function loadPets() {
+  try {
+    const res = await fetch('/api/pets');
+    allPets = await res.json();
+    renderPets(allPets);
+  } catch(e) { console.error('Failed to load pets'); }
+}
+
+function renderPets(pets) {
+  const c = document.getElementById('pet-list-container');
+  if(!pets.length) { c.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;text-align:center;margin-top:2rem;">No pets found.</p>'; return; }
+  
+  c.innerHTML = pets.map(p => `
+    <div class="pet-item ${p.petId === activePetId ? 'active' : ''}" onclick="selectPet(${p.petId}, '${p.name}', '${p.ownerName}')">
+      <div style="font-weight:600;font-size:.95rem;">${p.name} <span style="font-size:.7rem;font-weight:400;color:var(--text-secondary);">(${p.specieName||'Unknown'})</span></div>
+      <div style="font-size:.8rem;color:var(--text-muted);margin-top:.2rem;">Owner: ${p.ownerName}</div>
+    </div>
+  `).join('');
+}
+
+async function selectPet(petId, petName, ownerName) {
+  activePetId = petId;
+  renderPets(allPets); // update active state
+  
+  const view = document.getElementById('history-view');
+  view.innerHTML = `<h2 style="font-size:1.3rem;margin-bottom:.5rem;">${petName}'s History</h2><p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Owner: ${ownerName}</p><p>Loading...</p>`;
+  
+  try {
+    const res = await fetch(`/api/pets/${petId}/history`);
+    if(!res.ok) throw new Error();
+    const data = await res.json();
+    
+    let events = [];
+    data.services.forEach(s => {
+      events.push({
+        date: s.date ? new Date(s.date) : new Date(0),
+        html: `
+          <div class="timeline-event">
+            <span class="status-badge" style="position:absolute;top:1rem;right:1rem;background:var(--bg-input);border:1px solid var(--border);">${s.status}</span>
+            <h4 style="margin:0 0 .3rem;font-size:1rem;color:var(--green-400);">${s.type} Booking</h4>
+            <div style="font-size:.85rem;color:var(--text-secondary);margin-bottom:.5rem;">${s.date ? new Date(s.date).toLocaleString() : 'Date Unknown'}</div>
+            <div style="font-size:.85rem;">Booking ID: #${s.id}</div>
+          </div>
+        `
+      });
+    });
+    
+    data.veterinary.forEach(v => {
+      events.push({
+        date: v.date ? new Date(v.date) : new Date(0),
+        html: `
+          <div class="timeline-event" style="border-left-color:#3b82f6;">
+            <span class="status-badge" style="position:absolute;top:1rem;right:1rem;background:var(--bg-input);border:1px solid var(--border);">${v.status}</span>
+            <h4 style="margin:0 0 .3rem;font-size:1rem;color:#60a5fa;">🩺 Veterinary Appointment</h4>
+            <div style="font-size:.85rem;color:var(--text-secondary);margin-bottom:.5rem;">${v.date ? new Date(v.date).toLocaleString() : 'Date Unknown'} | Vet: ${v.vet}</div>
+            <div style="font-size:.85rem;margin-bottom:.3rem;"><strong>Reason:</strong> ${v.reason||'—'}</div>
+          </div>
+        `
+      });
+    });
+    
+    events.sort((a,b) => b.date - a.date); // Newest first
+    
+    if(!events.length) {
+      view.innerHTML = `<h2 style="font-size:1.3rem;margin-bottom:.5rem;">${petName}'s History</h2><p style="color:var(--text-muted);font-size:.9rem;">Owner: ${ownerName}</p><div class="table-empty" style="margin-top:2rem;"><div class="empty-icon">📝</div><p>No history records found for this pet.</p></div>`;
+      return;
+    }
+    
+    view.innerHTML = `<h2 style="font-size:1.3rem;margin-bottom:.5rem;">${petName}'s History</h2><p style="color:var(--text-muted);font-size:.9rem;margin-bottom:2rem;">Owner: ${ownerName}</p>` + events.map(e => e.html).join('');
+    
+  } catch(e) {
+    view.innerHTML = `<h2 style="font-size:1.3rem;margin-bottom:.5rem;">${petName}'s History</h2><p style="color:#f87171;">Failed to load history.</p>`;
+  }
+}
+
+document.getElementById('pet-search').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  const filt = allPets.filter(p => p.name.toLowerCase().includes(q) || p.ownerName.toLowerCase().includes(q));
+  renderPets(filt);
+});
+
+loadPets();
+</script>
+<script src="nav-manager.js"></script>
+</body>
+</html>
