@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – Manage Vets</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .btn-icon-sm { background:none; border:none; cursor:pointer; font-size:1rem; padding:.2rem; }
+    .form-in { width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); padding:.6rem; color:var(--text-primary); margin-bottom:.5rem; }
+    .btn-primary { background:linear-gradient(135deg,var(--green-600),var(--green-500)); color:#fff; border:none; border-radius:var(--radius-sm); padding:.6rem 1.2rem; font-weight:600; cursor:pointer; }
+    
+    .vet-form { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); padding:1.5rem; margin-bottom:2rem; }
+    .vet-form .grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="paw-logo">🐾</div><span class="brand-name">PawCare</span></div>
+  <div class="nav-links"></div>
+</nav>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="admin-title">🩺 Manage Veterinarians</h1>
+      <p class="admin-sub">Add and update vets available for appointments</p>
+    </div>
+  </div>
+
+  <div class="vet-form">
+    <h2 style="font-size:1.1rem;margin-bottom:1rem;">Add New Vet</h2>
+    <form id="add-vet-form" class="grid">
+      <div>
+        <label style="font-size:.8rem;color:var(--text-secondary);font-weight:600;">First Name</label>
+        <input type="text" class="form-in" id="v-first" required />
+      </div>
+      <div>
+        <label style="font-size:.8rem;color:var(--text-secondary);font-weight:600;">Last Name</label>
+        <input type="text" class="form-in" id="v-last" required />
+      </div>
+      <div>
+        <label style="font-size:.8rem;color:var(--text-secondary);font-weight:600;">Email</label>
+        <input type="email" class="form-in" id="v-email" required />
+      </div>
+      <div>
+        <label style="font-size:.8rem;color:var(--text-secondary);font-weight:600;">Contact Number</label>
+        <input type="text" class="form-in" id="v-contact" required />
+      </div>
+      <div style="grid-column: span 2;">
+        <label style="font-size:.8rem;color:var(--text-secondary);font-weight:600;">Specialization</label>
+        <input type="text" class="form-in" id="v-spec" placeholder="e.g. Surgery, General Practice" required />
+      </div>
+      <div style="grid-column: span 2;text-align:right;">
+        <button type="submit" class="btn-primary">Add Vet</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="bookings-table">
+      <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Contact</th><th>Specialization</th><th>Actions</th></tr></thead>
+      <tbody id="vets-tbody"></tbody>
+    </table>
+    <div class="table-empty hidden" id="vets-empty"><div class="empty-icon">🩺</div><p>No vets found.</p></div>
+  </div>
+</div>
+
+<footer class="footer"><div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your pets, always.</span></div></footer>
+
+<script>
+const user = JSON.parse(localStorage.getItem('pawcare_user') || '{}');
+if (!user.success || user.userType !== 'staff' || user.roleName !== 'Operations Manager') {
+    alert("Access Denied: Operations Manager only.");
+    window.location.href = 'index.html';
+}
+
+async function loadVets() {
+    const res = await fetch('/api/vet/vets');
+    const vets = await res.json();
+    
+    const tbody = document.getElementById('vets-tbody');
+    const empty = document.getElementById('vets-empty');
+    if (!vets.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+
+    tbody.innerHTML = vets.map(v => `
+        <tr>
+            <td>#${v.vetId}</td>
+            <td style="font-weight:600;">Dr. ${v.firstName} ${v.lastName}</td>
+            <td>${v.email}</td>
+            <td>${v.contactNo}</td>
+            <td>${v.specialization}</td>
+            <td>
+                <button class="btn-icon-sm" title="Delete" onclick="deleteVet(${v.vetId})">🗑️</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+document.getElementById('add-vet-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+        firstName: document.getElementById('v-first').value,
+        lastName: document.getElementById('v-last').value,
+        email: document.getElementById('v-email').value,
+        contactNo: document.getElementById('v-contact').value,
+        specialization: document.getElementById('v-spec').value
+    };
+
+    const res = await fetch('/api/vet/vets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+        document.getElementById('add-vet-form').reset();
+        loadVets();
+    } else {
+        let errMsg = "Failed to add vet.";
+        try {
+            const err = await res.json();
+            if (err.error) errMsg = "Error: " + err.error;
+            else if (err.message) errMsg = "Server Error: " + err.message;
+        } catch(e) {
+            errMsg += " (Make sure you ran migrate_v4.sql in your database!)";
+        }
+        alert(errMsg);
+    }
+});
+
+async function deleteVet(id) {
+    if (!confirm('Are you sure you want to delete this vet?')) return;
+    await fetch(`/api/vet/vets/${id}`, { method: 'DELETE' });
+    loadVets();
+}
+
+loadVets();
+</script>
+<script src="nav-manager.js"></script>
+</body>
+</html>

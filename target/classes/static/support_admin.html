@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – Customer Support Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .btn-icon-sm { background:none; border:none; cursor:pointer; font-size:1rem; padding:.2rem; }
+    .status-badge { font-size:.72rem; font-weight:700; padding:.2rem .6rem; border-radius:99px; text-transform:capitalize; }
+    .status-badge.pending { background:rgba(234,179,8,.1); color:#eab308; }
+    .status-badge.answered { background:rgba(34,197,94,.1); color:var(--green-400); }
+    
+    .reply-panel { background:var(--bg-surface); border:1px solid var(--border-active); border-radius:8px; padding:1rem; margin-top:.6rem; display:none; }
+    .reply-panel.open { display:block; }
+    .form-in { width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); padding:.6rem; color:var(--text-primary); font-family:inherit; margin-bottom:.5rem; }
+    .btn-primary { background:linear-gradient(135deg,var(--green-600),var(--green-500)); color:#fff; border:none; border-radius:var(--radius-sm); padding:.6rem 1.2rem; font-weight:600; cursor:pointer; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="paw-logo">🐾</div><span class="brand-name">PawCare</span></div>
+  <div class="nav-links"></div>
+</nav>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="admin-title">🎧 Customer Support Dashboard</h1>
+      <p class="admin-sub">Manage customer inquiries and download system reports</p>
+    </div>
+  </div>
+
+  <div class="kpi-grid" style="grid-template-columns:repeat(2, 1fr);">
+    <div class="kpi-card"><div class="kpi-icon">📩</div><div class="kpi-info"><div class="kpi-value" id="kpi-pending">0</div><div class="kpi-label">Pending Inquiries</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon">✅</div><div class="kpi-info"><div class="kpi-value" id="kpi-answered">0</div><div class="kpi-label">Answered Inquiries</div></div></div>
+  </div>
+
+  <div class="table-wrapper" style="margin-top:2rem;">
+    <h2 style="font-size:1.2rem;margin-bottom:1rem;">Customer Inquiries</h2>
+    <table class="bookings-table">
+      <thead><tr><th>ID</th><th>Date</th><th>Customer</th><th>Subject</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody id="inq-tbody"></tbody>
+    </table>
+    <div class="table-empty hidden" id="inq-empty"><div class="empty-icon">📫</div><p>No inquiries found.</p></div>
+  </div>
+</div>
+
+<footer class="footer"><div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your pets, always.</span></div></footer>
+
+<script>
+const user = JSON.parse(localStorage.getItem('pawcare_user') || '{}');
+if (!user.success || user.userType !== 'staff' || user.roleName !== 'Customer Care Supervisor') {
+    if(user.roleName !== 'Operations Manager') { // let operations view it too for demo
+        alert("Access Denied: Customer Care Supervisor only.");
+        window.location.href = 'index.html';
+    }
+}
+
+async function loadInquiries() {
+    const res = await fetch('/api/support/inquiries');
+    const inqs = await res.json();
+    
+    document.getElementById('kpi-pending').textContent = inqs.filter(i=>i.status==='Pending').length;
+    document.getElementById('kpi-answered').textContent = inqs.filter(i=>i.status==='Answered').length;
+    
+    const tbody = document.getElementById('inq-tbody');
+    const empty = document.getElementById('inq-empty');
+    if (!inqs.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+
+    tbody.innerHTML = inqs.map(i => `
+        <tr>
+            <td>#${i.inquiryId}</td>
+            <td>${i.createdAt ? new Date(i.createdAt).toLocaleDateString() : ''}</td>
+            <td>${i.ownerName} <br><span style="font-size:.7rem;color:var(--text-muted);">${i.ownerEmail}</span></td>
+            <td>
+                <div style="font-weight:600;">${i.subject}</div>
+                <div style="font-size:.8rem;color:var(--text-secondary);margin-top:.2rem;">${i.message}</div>
+                ${i.response ? `<div style="margin-top:.5rem;padding:.5rem;background:rgba(34,197,94,.1);border-left:2px solid var(--green-500);font-size:.8rem;"><strong>Reply:</strong> ${i.response}</div>` : ''}
+            </td>
+            <td><span class="status-badge ${i.status.toLowerCase()}">${i.status}</span></td>
+            <td>
+                ${i.status === 'Pending' ? `
+                <button class="btn-icon-sm" title="Reply" onclick="toggleReply(${i.inquiryId})">↩️ Reply</button>
+                <div class="reply-panel" id="reply-${i.inquiryId}">
+                    <textarea class="form-in" id="resp-${i.inquiryId}" rows="3" placeholder="Write your response..."></textarea>
+                    <button class="btn-primary" onclick="sendReply(${i.inquiryId})">Send Reply</button>
+                </div>
+                ` : '<span style="color:var(--text-muted);font-size:.8rem;">Responded</span>'}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function toggleReply(id) {
+    document.getElementById(`reply-${id}`).classList.toggle('open');
+}
+
+async function sendReply(id) {
+    const response = document.getElementById(`resp-${id}`).value;
+    if(!response.trim()) return;
+    
+    const res = await fetch(`/api/support/inquiries/${id}/reply`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffId: user.staffId, response })
+    });
+    
+    if (res.ok) loadInquiries();
+    else alert('Failed to send reply');
+}
+
+loadInquiries();
+</script>
+<script src="nav-manager.js"></script>
+</body>
+</html>

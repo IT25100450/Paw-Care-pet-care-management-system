@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – Log Grooming Session</title>
+  <meta name="description" content="Staff interface to assign groomers and log grooming sessions." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .staff-page { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    .staff-header h1 { font-size:1.6rem; font-weight:800; color:var(--text-primary); }
+    .staff-header p { font-size:.88rem; color:var(--text-secondary); margin-top:.3rem; }
+    .staff-layout { display:grid; grid-template-columns:1fr 1fr; gap:2rem; margin-top:1.5rem; }
+    .staff-form-panel, .staff-table-panel { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:2rem; }
+    .staff-form-panel h2, .staff-table-panel h2 { font-size:1.1rem; font-weight:700; color:var(--text-primary); margin-bottom:1.5rem; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .form-grid.full { grid-template-columns:1fr; }
+    .form-group { display:flex; flex-direction:column; gap:.3rem; }
+    .form-group label { font-size:.82rem; font-weight:600; color:var(--text-secondary); }
+    .form-group select, .form-group textarea, .form-group input {
+      background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm);
+      padding:.7rem .9rem; color:var(--text-primary); font-family:'Inter',sans-serif; font-size:.88rem;
+      outline:none; transition:border-color var(--transition);
+    }
+    .form-group select:focus, .form-group textarea:focus { border-color:var(--border-active); box-shadow:0 0 0 3px rgba(34,197,94,.1); }
+    .form-group textarea { resize:vertical; min-height:70px; }
+    .form-submit-row { margin-top:1.2rem; }
+    .vet-alert { padding:.7rem 1rem; border-radius:var(--radius-sm); font-size:.82rem; display:none; margin-bottom:1rem; }
+    .vet-alert.visible { display:block; background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.2); color:var(--green-300); }
+    .vet-alert.error { background:rgba(239,68,68,.08); border-color:rgba(239,68,68,.2); color:#f87171; }
+    .booking-info-box { background:rgba(34,197,94,.06); border:1px solid rgba(34,197,94,.15); border-radius:var(--radius-sm); padding:.9rem; margin-top:.6rem; display:none; font-size:.85rem; }
+    .booking-info-box.visible { display:block; }
+    .booking-info-box strong { color:var(--green-400); }
+    .badge-status { display:inline-block; padding:.18rem .55rem; border-radius:99px; font-size:.72rem; font-weight:700; text-transform:capitalize; }
+    .badge-status.pending   { background:rgba(234,179,8,.1);  color:#eab308; }
+    .badge-status.confirmed { background:rgba(34,197,94,.1);  color:var(--green-400); }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="paw-logo">🐾</div><span class="brand-name">PawCare</span></div>
+  <div class="nav-links"></div>
+</nav>
+
+<div class="staff-page">
+  <div class="staff-header">
+    <h1>✂️ Assign Groomer &amp; Log Session</h1>
+    <p>Select a grooming booking, assign a groomer and service type</p>
+  </div>
+  <div class="vet-alert" id="groom-alert"></div>
+
+  <div class="staff-layout">
+    <!-- Form Panel -->
+    <div class="staff-form-panel">
+      <h2>📝 New Grooming Log</h2>
+      <form id="groom-form" autocomplete="off">
+
+        <div class="form-grid full">
+          <div class="form-group">
+            <label for="groom-booking-select">Booking (Pet &amp; Owner) *</label>
+            <select id="groom-booking-select" required>
+              <option value="">Loading bookings…</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-top:1.2rem;">
+          <div class="form-group">
+            <label for="groom-service-type">Service Type *</label>
+            <select id="groom-service-type" required>
+              <option value="Normal Grooming" selected>Normal Grooming</option>
+              <option value="Full Grooming">Full Grooming</option>
+              <option value="Premium Grooming">Premium Grooming</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="groom-groomer-select">Groomer Name *</label>
+            <select id="groom-groomer-select" required>
+              <option value="">Loading groomers…</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Coat Condition, Products Used, Skin Notes removed — not stored in DB -->
+
+        <div class="form-submit-row">
+          <button type="submit" class="btn-primary" style="width:100%;">Save Grooming Log</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="staff-table-panel">
+      <h2>📋 Recent Logs</h2>
+      <div class="table-wrapper">
+        <table class="bookings-table">
+          <thead><tr><th>Pet</th><th>Owner</th><th>Service</th><th>Groomer</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody id="recent-groom-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="footer"><div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your pets, always.</span></div></footer>
+
+<script>
+let allBookings = [];
+
+function showAlert(msg, isError = false) {
+  const a = document.getElementById('groom-alert');
+  a.textContent = msg;
+  a.className = 'vet-alert visible' + (isError ? ' error' : '');
+  setTimeout(() => a.className = 'vet-alert', 4000);
+}
+
+async function loadBookings() {
+  const res = await fetch('/api/grooming');
+  allBookings = res.ok ? await res.json() : [];
+
+  const sel = document.getElementById('groom-booking-select');
+  if (!allBookings.length) {
+    sel.innerHTML = '<option value="">No grooming bookings found</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">Select a booking…</option>'
+    + allBookings.map(b => {
+        const dt = b.bookingDateTime ? new Date(b.bookingDateTime).toLocaleString('en-US', { dateStyle:'medium', timeStyle:'short' }) : '—';
+        return `<option value="${b.bookingId}">${b.petName} (${b.ownerName}) — ${dt} [${b.status}]</option>`;
+      }).join('');
+}
+
+async function loadGroomers() {
+  const res = await fetch('/api/grooming/groomers');
+  const groomers = res.ok ? await res.json() : [];
+  const sel = document.getElementById('groom-groomer-select');
+  if (!groomers.length) {
+    sel.innerHTML = '<option value="">No groomers found — add via Manage Groomers</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">Select groomer…</option>'
+    + groomers.map(g => `<option value="${g.groomerId}">${g.firstName} ${g.lastName}${g.specialty ? ' ('+g.specialty+')' : ''}</option>`).join('');
+}
+
+async function loadRecentLogs() {
+  const res = await fetch('/api/grooming');
+  const logs = res.ok ? await res.json() : [];
+  const tbody = document.getElementById('recent-groom-tbody');
+  if (!logs.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">No logs yet</td></tr>'; return; }
+  tbody.innerHTML = logs.slice(0, 20).map(g => {
+    const dt = g.bookingDateTime ? new Date(g.bookingDateTime).toLocaleDateString('en-US', { dateStyle:'medium' }) : '—';
+    const badge = `<span class="badge-status ${g.status||'pending'}">${g.status||'pending'}</span>`;
+    return `<tr>
+      <td>${g.petName||'—'}</td>
+      <td>${g.ownerName||'—'}</td>
+      <td>${g.type||'—'}</td>
+      <td>${g.groomerName && g.groomerName !== 'Unassigned' ? g.groomerName : '<span style="color:var(--text-muted);">—</span>'}</td>
+      <td>${badge}</td>
+      <td>${dt}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('groom-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const bookingId  = parseInt(document.getElementById('groom-booking-select').value);
+  const serviceType = document.getElementById('groom-service-type').value;
+  const groomerId   = parseInt(document.getElementById('groom-groomer-select').value);
+
+  if (!bookingId)   { showAlert('Please select a grooming booking.', true); return; }
+  if (!serviceType) { showAlert('Please select a service type.', true); return; }
+  if (!groomerId)   { showAlert('Please select a groomer.', true); return; }
+
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const res = await fetch(`/api/grooming/${bookingId}/assign`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ serviceType, groomerId })
+  });
+
+  btn.disabled = false; btn.textContent = 'Save Grooming Log';
+
+  if (res.ok) {
+    showAlert('✓ Grooming session confirmed and logged!');
+    document.getElementById('groom-form').reset();
+    loadBookings();
+    loadRecentLogs();
+  } else {
+    const err = await res.json();
+    showAlert(err.error || 'Failed to save.', true);
+  }
+});
+
+function prefillSelected(id) {
+  const b = allBookings.find(x => x.bookingId === id);
+  if (!b) return;
+  document.getElementById('groom-booking-select').value = String(b.bookingId);
+  if (b.type) document.getElementById('groom-service-type').value = b.type;
+  if (b.groomerId) document.getElementById('groom-groomer-select').value = String(b.groomerId);
+}
+
+document.getElementById('groom-booking-select').addEventListener('change', function() {
+  const id = parseInt(this.value);
+  if (id) prefillSelected(id);
+});
+
+(async () => {
+  await Promise.all([loadBookings(), loadGroomers(), loadRecentLogs()]);
+  const preId = parseInt(new URLSearchParams(location.search).get('booking'));
+  if (preId) {
+    prefillSelected(preId);
+    document.getElementById('groom-form').scrollIntoView({ behavior: 'smooth' });
+  }
+})();
+
+</script>
+<script src="nav-manager.js"></script>
+</body>
+</html>

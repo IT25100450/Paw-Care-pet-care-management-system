@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – Store Admin</title>
+  <meta name="description" content="Admin dashboard to manage pet store product catalog — add, update, and remove products." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .add-product-panel { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:2rem; margin-bottom:2rem; }
+    .add-product-panel h2 { font-size:1.1rem; font-weight:700; color:var(--text-primary); margin-bottom:1.5rem; }
+    .form-row { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1rem; }
+    .form-row .form-group { flex:1; min-width:180px; display:flex; flex-direction:column; gap:.3rem; }
+    .form-row .form-group label { font-size:.82rem; font-weight:600; color:var(--text-secondary); }
+    .form-row .form-group input, .form-row .form-group textarea { background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); padding:.6rem .8rem; color:var(--text-primary); font-family:'Inter',sans-serif; font-size:.85rem; outline:none; }
+    .form-row .form-group input:focus, .form-row .form-group textarea:focus { border-color:var(--border-active); box-shadow:0 0 0 3px rgba(34,197,94,.1); }
+    .form-row .form-group textarea { resize:vertical; min-height:60px; }
+    .btn-icon-sm { background:none; border:none; cursor:pointer; font-size:1rem; padding:.2rem; }
+    .form-row .form-group select { background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); padding:.6rem .8rem; color:var(--text-primary); font-family:'Inter',sans-serif; font-size:.85rem; outline:none; }
+    .edit-product-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:1000; }
+    .edit-product-overlay.open { display:flex; }
+    .edit-product-modal { background:var(--bg-card); border:1px solid var(--border-active); border-radius:var(--radius-lg); padding:1.8rem; width:min(620px,94vw); animation:popIn .25s ease; }
+    .edit-product-modal h2 { font-size:1.1rem; font-weight:700; color:var(--text-primary); margin-bottom:1.2rem; }
+    .edit-actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:.6rem; }
+    @keyframes popIn { from { transform:scale(.96); opacity:0; } to { transform:none; opacity:1; } }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="paw-logo">🐾</div><span class="brand-name">PawCare</span></div>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="booking_main.html" class="nav-link">Book Service</a>
+    <a href="store_main.html" class="nav-link">Pet Store</a>
+    <a href="store_admin.html" class="nav-link active">Store Admin</a>
+  </div>
+  <div class="nav-user"><div class="user-avatar admin-av">ADM</div><span class="user-name">Administrator</span></div>
+</nav>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <div><h1 class="admin-title">🛍️ Product Management</h1><p class="admin-sub">Manage pet store product catalog</p></div>
+    <a href="store_main.html" class="btn-primary admin-new-btn">View Storefront →</a>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-icon">📦</div><div class="kpi-info"><div class="kpi-value" id="skpi-total">0</div><div class="kpi-label">Total Products</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon">✅</div><div class="kpi-info"><div class="kpi-value" id="skpi-instock">0</div><div class="kpi-label">In Stock</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon">❌</div><div class="kpi-info"><div class="kpi-value" id="skpi-outstock">0</div><div class="kpi-label">Out of Stock</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon">🏷️</div><div class="kpi-info"><div class="kpi-value" id="skpi-cats">0</div><div class="kpi-label">Categories</div></div></div>
+  </div>
+
+  <!-- Add Product Form -->
+  <div class="add-product-panel">
+    <h2>➕ Add New Product</h2>
+    <form id="add-product-form" autocomplete="off">
+      <div class="form-row">
+        <div class="form-group"><label for="prod-name">Product Name *</label><input type="text" id="prod-name" placeholder="Premium Dog Food" required /></div>
+        <div class="form-group"><label for="prod-category">Category *</label><select id="prod-category" required><option value="">Loading…</option></select></div>
+        <div class="form-group"><label for="prod-price">Price (LKR)</label><input type="number" id="prod-price" placeholder="1500" step="0.01" min="0" /></div>
+        <div class="form-group"><label for="prod-stock">Stock Qty</label><input type="number" id="prod-stock" placeholder="50" min="0" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label for="prod-image">Image Filename</label><input type="text" id="prod-image" placeholder="product.jpg" /></div>
+        <div class="form-group"><label for="prod-desc">Description</label><textarea id="prod-desc" placeholder="Product description…"></textarea></div>
+      </div>
+      <button type="submit" class="btn-primary" style="margin-top:.5rem;">Add Product</button>
+    </form>
+  </div>
+
+  <!-- Filters -->
+  <div class="admin-toolbar">
+    <div class="search-box">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="store-admin-search" placeholder="Search products…" class="search-input" />
+    </div>
+    <div class="filter-row">
+      <select class="filter-select" id="store-filter-cat"><option value="">All Categories</option></select>
+      <button class="btn-ghost clear-btn" id="store-clear-filters">Clear Filters</button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrapper">
+    <table class="bookings-table">
+      <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Description</th><th>Actions</th></tr></thead>
+      <tbody id="store-admin-tbody"></tbody>
+    </table>
+    <div class="table-empty hidden" id="store-table-empty"><div class="empty-icon">🛍️</div><p>No products found.</p></div>
+  </div>
+</div>
+
+<div class="edit-product-overlay" id="edit-product-panel">
+  <div class="edit-product-modal" role="dialog" aria-labelledby="edit-prod-title">
+    <h2 id="edit-prod-title">✏️ Update Product</h2>
+    <form id="edit-product-form" autocomplete="off">
+      <div class="form-row">
+        <div class="form-group"><label for="edit-prod-name">Product Name *</label><input type="text" id="edit-prod-name" required /></div>
+        <div class="form-group"><label for="edit-prod-category">Category *</label><select id="edit-prod-category" required></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label for="edit-prod-price">Price (LKR)</label><input type="number" id="edit-prod-price" step="0.01" min="0" /></div>
+        <div class="form-group"><label for="edit-prod-stock">Stock Qty</label><input type="number" id="edit-prod-stock" min="0" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label for="edit-prod-image">Image Filename</label><input type="text" id="edit-prod-image" placeholder="product.jpg" /></div>
+        <div class="form-group"><label for="edit-prod-desc">Description</label><textarea id="edit-prod-desc"></textarea></div>
+      </div>
+      <div class="edit-actions">
+        <button type="button" class="btn-ghost" id="edit-cancel-btn">Cancel</button>
+        <button type="submit" class="btn-primary" id="edit-save-btn">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<footer class="footer"><div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your pets, always.</span></div></footer>
+<script src="store.js?v=2"></script>
+<script src="nav-manager.js"></script>
+</body>
+</html>

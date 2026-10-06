@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – Book Vet Appointment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .booking-page { max-width: 760px; margin: 3rem auto; padding: 2rem; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-card); }
+    .booking-page h2 { font-size:1.5rem; font-weight:800; color:var(--text-primary); margin-bottom:1.6rem; }
+    .form-group { margin-bottom:1.3rem; display:flex; flex-direction:column; gap:.4rem; }
+    .form-group label { font-size:.85rem; font-weight:600; color:var(--text-secondary); }
+    .form-input { padding:.8rem 1rem; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-family:'Inter',sans-serif; font-size:.9rem; outline:none; transition:border-color var(--transition); width:100%; box-sizing:border-box; }
+    .form-input:focus { border-color:var(--green-500); box-shadow:0 0 0 3px rgba(34,197,94,.1); }
+    .form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .timeslot-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:.6rem; margin-top:.5rem; }
+    .time-slot { padding:.6rem .8rem; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; text-align:center; cursor:pointer; font-size:.82rem; font-weight:500; transition:all .2s; }
+    .time-slot:hover { border-color:var(--green-500); }
+    .time-slot.selected { background:rgba(34,197,94,.12); border-color:var(--green-500); color:var(--green-300); font-weight:700; }
+    .btn-submit { width:100%; padding:1rem; background:var(--green-gradient); color:#fff; border:none; border-radius:var(--radius-md); font-weight:700; font-size:1rem; cursor:pointer; font-family:'Inter',sans-serif; transition:all .3s; margin-top:.5rem; }
+    .btn-submit:hover { opacity:.9; transform:translateY(-2px); }
+    .btn-submit:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+    .alert-msg { padding:1rem 1.2rem; margin-bottom:1.2rem; border-radius:var(--radius-sm); display:none; font-size:.9rem; }
+    .alert-msg.success { display:block; background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.3); color:var(--green-300); }
+    .alert-msg.error { display:block; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.3); color:#fca5a5; }
+    .info-banner { background:rgba(34,197,94,.05); border:1px solid rgba(34,197,94,.15); border-radius:var(--radius-sm); padding:.8rem 1rem; font-size:.82rem; color:var(--text-secondary); margin-bottom:1.4rem; }
+    .dup-warning { display:none; margin-top:.6rem; padding:.8rem 1rem; border-radius:var(--radius-sm); background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.45); color:#fca5a5; font-size:.85rem; }
+    .dup-warning.visible { display:block; animation:dupPulse .4s ease; }
+    .dup-warning strong { color:#f87171; }
+    .form-input.dup { border-color:rgba(239,68,68,.6); box-shadow:0 0 0 3px rgba(239,68,68,.12); }
+    @keyframes dupPulse { from { transform:translateY(-4px); opacity:0; } to { transform:none; opacity:1; } }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="paw-logo">🐾</div><span class="brand-name">PawCare</span></div>
+  <div class="nav-links"></div>
+</nav>
+
+<div class="booking-page">
+  <h2>🩺 Book a Vet Appointment</h2>
+  <div class="info-banner">ℹ️ Your appointment will be <strong>Pending</strong> until a Veterinary Coordinator assigns a vet and confirms it.</div>
+  <div id="status-msg" class="alert-msg"></div>
+
+  <form id="vet-form" autocomplete="off">
+    <div class="form-group">
+      <label for="pet-select">Select Your Pet *</label>
+      <select id="pet-select" class="form-input" required>
+        <option value="" disabled selected>Loading your pets…</option>
+      </select>
+      <div class="dup-warning" id="dup-warning" role="alert"></div>
+    </div>
+
+    <div class="form-group">
+      <label for="reason">Reason for Visit *</label>
+      <select id="reason" class="form-input" required>
+        <option value="General Checkup">General Checkup</option>
+        <option value="Vaccination">Vaccination</option>
+        <option value="Follow-up Visit">Follow-up Visit</option>
+        <option value="Emergency">Emergency</option>
+        <option value="Dental Care">Dental Care</option>
+        <option value="Skin & Coat Issue">Skin & Coat Issue</option>
+      </select>
+    </div>
+
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label for="appt-date">Preferred Date *</label>
+        <input type="date" id="appt-date" class="form-input" required />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Preferred Time Slot *</label>
+      <div class="timeslot-grid" id="timeslot-grid">
+        <!-- populated by JS -->
+      </div>
+      <input type="hidden" id="selected-time" />
+    </div>
+
+    <button type="submit" class="btn-submit" id="submit-btn">🩺 Book Appointment</button>
+  </form>
+</div>
+
+<footer class="footer">
+  <div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your pets, always.</span></div>
+</footer>
+
+<script>
+const TIME_SLOTS = ['09:00 AM','09:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','02:00 PM','02:30 PM','03:00 PM','03:30 PM','04:00 PM','04:30 PM'];
+const statusMsg = document.getElementById('status-msg');
+const user = JSON.parse(localStorage.getItem('pawcare_user') || '{}');
+let selectedTime = null;
+const openByPet = {};
+
+function checkDuplicate(petId) {
+  const warn = document.getElementById('dup-warning');
+  const sel  = document.getElementById('pet-select');
+  const btn  = document.getElementById('submit-btn');
+  const a = openByPet[petId];
+  if (a) {
+    const when = a.appointmentDateTime ? new Date(a.appointmentDateTime).toLocaleString('en-US', { dateStyle:'medium', timeStyle:'short' }) : '—';
+    warn.innerHTML = `🔴 <strong>${a.petName}</strong> already has a <strong>${a.status}</strong> appointment (#${a.appointmentId}) on <strong>${when}</strong> for “${a.reason || 'visit'}”. You can book again once it is completed or cancelled.`;
+    warn.classList.add('visible'); sel.classList.add('dup'); btn.disabled = true;
+  } else {
+    warn.classList.remove('visible'); sel.classList.remove('dup'); btn.disabled = false;
+  }
+  return !!a;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Min date = today
+  document.getElementById('appt-date').min = new Date().toISOString().split('T')[0];
+
+  // Render time slots
+  const grid = document.getElementById('timeslot-grid');
+  TIME_SLOTS.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'time-slot';
+    div.textContent = t;
+    div.addEventListener('click', () => {
+      document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+      div.classList.add('selected');
+      selectedTime = t;
+      document.getElementById('selected-time').value = t;
+    });
+    grid.appendChild(div);
+  });
+
+  // Load user's pets + their open appointments
+  try {
+    const [res, apRes] = await Promise.all([
+      fetch(`/api/pets/by-email?email=${encodeURIComponent(user.email)}`),
+      fetch(`/api/vet/appointments/owner/${user.ownerId}`)
+    ]);
+    const pets = await res.json();
+    const appts = apRes.ok ? await apRes.json() : [];
+    appts.filter(a => ['pending','confirmed'].includes((a.status||'pending').toLowerCase()))
+         .forEach(a => { openByPet[a.petId] = a; });
+    const select = document.getElementById('pet-select');
+    if (!pets || pets.length === 0) {
+      select.innerHTML = '<option value="" disabled selected>No pets registered yet</option>';
+      statusMsg.className = 'alert-msg error';
+      statusMsg.textContent = '⚠️ You have no registered pets. Please add a pet to your profile first.';
+      return;
+    }
+    select.innerHTML = '<option value="" disabled selected>Select a pet…</option>';
+    pets.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.petId;
+      const open = openByPet[p.petId];
+      opt.textContent = `${p.name} (${p.specieName || 'Unknown'})` + (open ? ` — ⚠ already booked (${open.status})` : '');
+      if (open) opt.style.color = '#f87171';
+      select.appendChild(opt);
+    });
+    select.addEventListener('change', () => checkDuplicate(select.value));
+  } catch (e) {
+    statusMsg.className = 'alert-msg error';
+    statusMsg.textContent = '❌ Failed to load your pets. Please refresh.';
+  }
+
+  // Form submit
+  let submitting = false;
+  document.getElementById('vet-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (submitting) return;
+
+    const petId  = document.getElementById('pet-select').value;
+    const reason = document.getElementById('reason').value;
+    const date   = document.getElementById('appt-date').value;
+
+    if (!petId) { statusMsg.className='alert-msg error'; statusMsg.textContent='⚠️ Please select a pet.'; return; }
+    if (checkDuplicate(petId)) return;
+    if (!date)  { statusMsg.className='alert-msg error'; statusMsg.textContent='⚠️ Please select a date.'; return; }
+    if (!selectedTime) { statusMsg.className='alert-msg error'; statusMsg.textContent='⚠️ Please select a time slot.'; return; }
+
+    // Parse time to 24h for ISO datetime
+    const [timePart, ampm] = selectedTime.split(' ');
+    let [hh, mm] = timePart.split(':').map(Number);
+    if (ampm === 'PM' && hh !== 12) hh += 12;
+    if (ampm === 'AM' && hh === 12) hh = 0;
+    const iso = `${date}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`;
+
+    submitting = true;
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true; btn.textContent = 'Booking…';
+
+    try {
+      const res = await fetch('/api/vet/appointments', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ petId: parseInt(petId), reason, appointmentDateTime: iso })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        statusMsg.className = 'alert-msg success';
+        statusMsg.textContent = `✅ Appointment #${data.appointmentId} booked! Status: Pending. A coordinator will confirm and assign your vet.`;
+        openByPet[data.petId] = data;
+        const o = document.querySelector(`#pet-select option[value="${data.petId}"]`);
+        if (o) { o.textContent += ' — ⚠ already booked (pending)'; o.style.color = '#f87171'; }
+        e.target.reset();
+        document.getElementById('dup-warning').classList.remove('visible');
+        document.getElementById('pet-select').classList.remove('dup');
+        document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+        selectedTime = null;
+      } else {
+        statusMsg.className = 'alert-msg error';
+        statusMsg.textContent = '❌ ' + (data.error || 'Booking failed');
+      }
+    } catch {
+      statusMsg.className = 'alert-msg error';
+      statusMsg.textContent = '❌ Network error.';
+    }
+
+    submitting = false;
+    btn.disabled = false; btn.textContent = '🩺 Book Appointment';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+</script>
+<script src="nav-manager.js"></script>
+</body>
+</html>
