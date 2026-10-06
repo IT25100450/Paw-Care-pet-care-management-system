@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PawCare – Book a Service</title>
+  <meta name="description" content="Book a grooming service for your pet on PawCare. Choose your pet, select a service, pick a date and time slot, and confirm instantly."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<!-- ── NAV ─────────────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="paw-logo">🐾</div>
+    <span class="brand-name">PawCare</span>
+  </div>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="booking_main.html" class="nav-link active">Book Service</a>
+    <a href="vet_main.html" class="nav-link">Veterinary</a>
+    <a href="store_main.html" class="nav-link">Pet Store</a>
+    <a href="admin.html" class="nav-link">Admin</a>
+  </div>
+  <div class="nav-user">
+    <div class="user-avatar">IYB</div>
+    <span class="user-name">Imbulagodage Y B</span>
+  </div>
+</nav>
+
+<!-- ── BOOKING PAGE ─────────────────────────────────────────────────── -->
+<div class="booking-page">
+
+  <!-- Progress Bar -->
+  <div class="progress-bar-wrapper">
+    <div class="progress-container">
+      <div class="progress-step active" id="prog-1">
+        <div class="prog-circle">1</div>
+        <span>Pet & Service</span>
+      </div>
+      <div class="prog-line" id="line-1"></div>
+      <div class="progress-step" id="prog-2">
+        <div class="prog-circle">2</div>
+        <span>Date & Time</span>
+      </div>
+      <div class="prog-line" id="line-2"></div>
+      <div class="progress-step" id="prog-3">
+        <div class="prog-circle">3</div>
+        <span>Details</span>
+      </div>
+      <div class="prog-line" id="line-3"></div>
+      <div class="progress-step" id="prog-4">
+        <div class="prog-circle">4</div>
+        <span>Confirm</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 1: Pet & Service ───────────────────────────────────────── -->
+  <div class="booking-step" id="step-1">
+    <div class="step-heading">
+      <h2>Select Your Pet & Service</h2>
+      <p>Choose which pet and what type of service you'd like to book</p>
+    </div>
+
+    <div class="booking-two-col">
+      <!-- Pet Selection -->
+      <div class="booking-panel">
+        <h3 class="panel-title"><span>🐶</span> Choose Your Pet</h3>
+        <div class="pet-grid" id="pet-grid">
+          <div class="pet-option" style="justify-content:center;color:var(--text-secondary);">Loading your pets...</div>
+        </div>
+        <div class="field-error hidden" id="pet-error">⚠️ Please select a pet to continue.</div>
+      </div>
+
+      <!-- Service Selection -->
+      <div class="booking-panel">
+        <h3 class="panel-title"><span>🛎️</span> Choose a Service</h3>
+        <div class="service-opt-grid" id="service-grid">
+          <div class="service-option" data-service="Normal Grooming" id="svc-normal" tabindex="0">
+            <div class="svc-icon">🚿</div>
+            <div class="svc-info">
+              <div class="svc-name">Normal Grooming</div>
+              <div class="svc-desc">Standard grooming service</div>
+            </div>
+            <div class="pet-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+          </div>
+          <div class="service-option" data-service="Full Grooming" id="svc-full" tabindex="0">
+            <div class="svc-icon">✂️</div>
+            <div class="svc-info">
+              <div class="svc-name">Full Grooming</div>
+              <div class="svc-desc">Bath, haircut, nails & ear clean</div>
+            </div>
+            <div class="pet-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+          </div>
+          <div class="service-option" data-service="Premium Grooming" id="svc-premium" tabindex="0">
+            <div class="svc-icon">✨</div>
+            <div class="svc-info">
+              <div class="svc-name">Premium Grooming</div>
+              <div class="svc-desc">Complete spa treatment</div>
+            </div>
+            <div class="pet-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+          </div>
+
+        </div>
+        <div class="field-error hidden" id="service-error">⚠️ Please select a service to continue.</div>
+      </div>
+    </div>
+
+    <div class="step-nav">
+      <div></div>
+      <button class="btn-primary" id="step1-next">Next: Choose Date & Time →</button>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: Calendar & Time Slot ───────────────────────────────── -->
+  <div class="booking-step hidden" id="step-2">
+    <div class="step-heading">
+      <h2>Choose Date & Time Slot</h2>
+      <p>Select an available date and time slot for your appointment</p>
+    </div>
+
+    <div class="booking-two-col calendar-layout">
+      <!-- Calendar -->
+      <div class="booking-panel calendar-panel">
+        <div class="calendar-header">
+          <button class="cal-nav-btn" id="cal-prev" aria-label="Previous month">&#8249;</button>
+          <h3 id="cal-month-label">September 2026</h3>
+          <button class="cal-nav-btn" id="cal-next" aria-label="Next month">&#8250;</button>
+        </div>
+        <div class="calendar-weekdays">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div class="calendar-grid" id="cal-grid"></div>
+        <div class="calendar-legend">
+          <span class="legend-dot available"></span>Available
+          <span class="legend-dot booked"></span>Unavailable
+          <span class="legend-dot selected"></span>Selected
+        </div>
+        <div class="field-error hidden" id="date-error">⚠️ Please select a date to continue.</div>
+      </div>
+
+      <!-- Time Slots -->
+      <div class="booking-panel timeslot-panel">
+        <h3 class="panel-title"><span>⏰</span> Available Time Slots</h3>
+        <div id="time-slot-placeholder" class="timeslot-placeholder">
+          <div class="placeholder-icon">📅</div>
+          <p>Select a date to see available time slots</p>
+        </div>
+        <div id="time-slot-grid" class="timeslot-grid hidden"></div>
+        <div class="field-error hidden" id="time-error">⚠️ Please select a time slot to continue.</div>
+      </div>
+    </div>
+
+    <div class="step-nav">
+      <button class="btn-ghost" id="step2-back">← Back</button>
+      <button class="btn-primary" id="step2-next">Next: Enter Details →</button>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: Special Instructions ────────────────────────────────── -->
+  <div class="booking-step hidden" id="step-3">
+    <div class="step-heading">
+      <h2>Appointment Details</h2>
+      <p>Add any special care instructions or notes for the groomer / caretaker</p>
+    </div>
+
+    <div class="booking-single-col">
+      <div class="booking-panel">
+        <!-- Summary of selections -->
+        <div class="selection-summary" id="selection-summary">
+          <div class="summary-chip" id="sum-pet"></div>
+          <div class="summary-chip" id="sum-service"></div>
+          <div class="summary-chip" id="sum-date"></div>
+          <div class="summary-chip" id="sum-time"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="special-notes">Special Care Instructions</label>
+          <textarea id="special-notes" rows="4" placeholder="e.g. Buddy is afraid of loud noises. Please be gentle around ears. Allergic to lavender products…" class="form-input form-textarea"></textarea>
+        </div>
+
+        <div class="field-error hidden" id="details-error">⚠️ Please fill in all required fields.</div>
+      </div>
+    </div>
+
+    <div class="step-nav">
+      <button class="btn-ghost" id="step3-back">← Back</button>
+      <button class="btn-primary" id="step3-next">Review Booking →</button>
+    </div>
+  </div>
+
+  <!-- ── STEP 4: Confirm ──────────────────────────────────────────────── -->
+  <div class="booking-step hidden" id="step-4">
+    <div class="step-heading">
+      <h2>Review & Confirm Booking</h2>
+      <p>Please review your booking details before confirming</p>
+    </div>
+
+    <div class="booking-single-col">
+      <div class="booking-panel confirm-panel">
+        <div class="confirm-header">
+          <div class="confirm-icon">🐾</div>
+          <div>
+            <div class="confirm-title">Booking Summary</div>
+            <div class="confirm-ref" id="confirm-ref">Ref: #BK-2026-XXXX</div>
+          </div>
+        </div>
+
+        <div class="confirm-grid" id="confirm-grid">
+          <div class="confirm-row">
+            <span class="cr-label">Pet</span>
+            <span class="cr-value" id="cr-pet">—</span>
+          </div>
+          <div class="confirm-row">
+            <span class="cr-label">Service</span>
+            <span class="cr-value" id="cr-service">—</span>
+          </div>
+          <div class="confirm-row">
+            <span class="cr-label">Date</span>
+            <span class="cr-value" id="cr-date">—</span>
+          </div>
+          <div class="confirm-row">
+            <span class="cr-label">Time Slot</span>
+            <span class="cr-value" id="cr-time">—</span>
+          </div>
+
+          <div class="confirm-row">
+            <span class="cr-label">Notes</span>
+            <span class="cr-value" id="cr-notes">None</span>
+          </div>
+          </div>
+        </div>
+
+        <div class="concurrency-notice">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          A concurrency check will be performed when you click Confirm Booking to ensure this slot is still available.
+        </div>
+    </div>
+
+    <div class="step-nav">
+      <button class="btn-ghost" id="step4-back">← Back</button>
+      <button class="btn-confirm" id="confirm-btn">
+        <span id="confirm-btn-text">✓ Confirm Booking</span>
+        <span id="confirm-spinner" class="spinner hidden"></span>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── SUCCESS MODAL ─────────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="success-modal">
+  <div class="modal-box">
+    <div class="modal-icon success-anim">✅</div>
+    <h2>Booking Confirmed!</h2>
+    <p>Your appointment has been successfully booked and the time slot has been reserved.</p>
+    <div class="modal-booking-id" id="modal-booking-id">Booking ID: #BK-2026-XXXX</div>
+    <div class="modal-detail-block" id="modal-details"></div>
+    <div class="modal-actions">
+      <a href="booking_main.html" class="btn-ghost">Back to Home</a>
+      <a href="admin.html" class="btn-primary">View All Bookings</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── SLOT TAKEN MODAL ──────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="slot-taken-modal">
+  <div class="modal-box">
+    <div class="modal-icon">⚠️</div>
+    <h2>Slot No Longer Available</h2>
+    <p>Sorry, this time slot was just taken by another user. The calendar has been refreshed to show current availability. Please select a different slot.</p>
+    <div class="modal-actions">
+      <button class="btn-primary" id="slot-taken-close">Choose Another Slot</button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="footer-brand">
+    <span class="footer-logo">🐾 PawCare</span>
+    <span class="footer-tagline">Caring for your pets, always.</span>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+<script src="nav-manager.js"></script>
+</body>
+</html>
