@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="auth-guard.js"></script>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawCare – Grooming Records</title>
+  <meta name="description" content="Manage grooming bookings — assign groomers and service types." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .btn-icon-sm { background:none; border:none; cursor:pointer; font-size:1rem; padding:.2rem; }
+    .assign-panel { background:var(--bg-surface); border:1px solid var(--border-active); border-radius:var(--radius-sm); padding:1rem; margin-top:.6rem; display:none; }
+    .assign-panel.open { display:block; }
+    .assign-row { display:grid; grid-template-columns:1fr 1fr auto; gap:.6rem; align-items:end; }
+    .assign-select { background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); padding:.5rem .7rem; color:var(--text-primary); font-size:.85rem; width:100%; }
+    .assign-select:focus { outline:none; border-color:var(--border-active); }
+    .badge-status { display:inline-block; padding:.18rem .55rem; border-radius:99px; font-size:.72rem; font-weight:700; text-transform:capitalize; }
+    .badge-status.pending   { background:rgba(234,179,8,.1);  color:#eab308; }
+    .badge-status.confirmed { background:rgba(34,197,94,.1);  color:var(--green-400); }
+    .badge-status.cancelled { background:rgba(239,68,68,.1);  color:#f87171; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="paw-logo">🐾</div><span class="brand-name">PawCare</span></div>
+  <div class="nav-links"></div>
+</nav>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="admin-title">✂️ Grooming Records</h1>
+      <p class="admin-sub">Review grooming bookings, assign a groomer and confirm service type</p>
+    </div>
+    <a href="groomers_admin.html" class="btn-primary admin-new-btn" style="background:var(--bg-surface);color:var(--green-400);border:1px solid var(--green-400);">
+      💇 Manage Groomers
+    </a>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-icon">✂️</div><div class="kpi-info"><div class="kpi-value" id="gkpi-total">0</div><div class="kpi-label">Total Sessions</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon">⏳</div><div class="kpi-info"><div class="kpi-value" id="gkpi-pending">0</div><div class="kpi-label">Pending</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon">✅</div><div class="kpi-info"><div class="kpi-value" id="gkpi-confirmed">0</div><div class="kpi-label">Confirmed</div></div></div>
+  </div>
+
+  <div class="admin-toolbar">
+    <div class="search-box">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="groom-search" placeholder="Search by pet or owner…" class="search-input" />
+    </div>
+    <div class="filter-row">
+      <select class="filter-select" id="groom-filter-status">
+        <option value="">All Status</option>
+        <option value="pending">Pending</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+      <button class="btn-ghost clear-btn" id="groom-clear">Clear</button>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="bookings-table">
+      <thead>
+        <tr>
+          <th>Pet</th><th>Owner</th><th>Date & Time</th><th>Service</th>
+          <th>Groomer</th><th>Status</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="groom-tbody"></tbody>
+    </table>
+    <div class="table-empty hidden" id="groom-empty"><div class="empty-icon">✂️</div><p>No grooming bookings found.</p></div>
+  </div>
+</div>
+
+<footer class="footer"><div class="footer-brand"><span class="footer-logo">🐾 PawCare</span><span class="footer-tagline">Caring for your pets, always.</span></div></footer>
+
+<script>
+let allBookings = [];
+let allGroomers = [];
+let filters = { search: '', status: '' };
+
+function sbadge(s) { return `<span class="badge-status ${s||'pending'}">${s||'pending'}</span>`; }
+function fmtDT(dt) { return dt ? new Date(dt).toLocaleString('en-US', { dateStyle:'medium', timeStyle:'short' }) : '—'; }
+
+async function loadData() {
+  const [bRes, gRes] = await Promise.all([
+    fetch('/api/grooming'),
+    fetch('/api/grooming/groomers')
+  ]);
+  allBookings = bRes.ok ? await bRes.json() : [];
+  allGroomers = gRes.ok ? await gRes.json() : [];
+
+  document.getElementById('gkpi-total').textContent     = allBookings.length;
+  document.getElementById('gkpi-pending').textContent   = allBookings.filter(b => b.status === 'pending').length;
+  document.getElementById('gkpi-confirmed').textContent = allBookings.filter(b => b.status === 'confirmed').length;
+
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('groom-tbody');
+  const empty = document.getElementById('groom-empty');
+  let f = allBookings;
+  if (filters.search)  f = f.filter(b => (b.petName||'').toLowerCase().includes(filters.search) || (b.ownerName||'').toLowerCase().includes(filters.search));
+  if (filters.status)  f = f.filter(b => b.status === filters.status);
+  tbody.innerHTML = '';
+  if (!f.length) { empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = f.map(b => `
+    <tr>
+      <td><strong>${b.petName || '—'}</strong></td>
+      <td>${b.ownerName || '—'}</td>
+      <td>${fmtDT(b.bookingDateTime)}</td>
+      <td>${b.type || '<span style="color:var(--text-muted);">Not set</span>'}</td>
+      <td>${b.groomerName && b.groomerName !== 'Unassigned'
+            ? `<span style="color:var(--green-400);">✔ ${b.groomerName}</span>`
+            : '<span style="color:var(--text-muted);">Unassigned</span>'}</td>
+      <td>${sbadge(b.status)}</td>
+      <td>
+        <a class="btn-icon-sm" title="Assign / Update Grooming" href="grooming_service.html?booking=${b.bookingId}" style="color:var(--green-400);text-decoration:none;">🔄</a>
+      </td>
+    </tr>`).join('');
+}
+
+function toggleAssign(id) {
+  const panel = document.getElementById('assign-' + id);
+  panel.classList.toggle('open');
+}
+
+async function confirmAssign(bookingId) {
+  const svcEl = document.getElementById('svc-' + bookingId);
+  const grmEl = document.getElementById('grm-' + bookingId);
+  const serviceType = svcEl.value;
+  const groomerId   = parseInt(grmEl.value);
+
+  if (!serviceType) { alert('Please select a service type.'); return; }
+  if (!groomerId)   { alert('Please select a groomer.'); return; }
+
+  const res = await fetch(`/api/grooming/${bookingId}/assign`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ serviceType, groomerId })
+  });
+
+  if (res.ok) { loadData(); }
+  else { const e = await res.json(); alert('Error: ' + (e.error || 'Failed')); }
+}
+
+document.getElementById('groom-search').addEventListener('input', e => { filters.search = e.target.value.toLowerCase(); renderTable(); });
+document.getElementById('groom-filter-status').addEventListener('change', e => { filters.status = e.target.value; renderTable(); });
+document.getElementById('groom-clear').addEventListener('click', () => {
+  filters = { search: '', status: '' };
+  document.getElementById('groom-search').value = '';
+  document.getElementById('groom-filter-status').value = '';
+  renderTable();
+});
+
+loadData();
+</script>
+<script src="nav-manager.js"></script>
+</body>
+</html>
